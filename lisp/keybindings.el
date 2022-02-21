@@ -15,11 +15,22 @@
 (define-key isearch-mode-map (kbd "M-j") 'isearch-yank-word-or-char)
 
 (map! :nir "C-d"  #'lispy-delete)
+(map! :nv "C-a"  #'evil-first-non-blank)
+(map! :nv "C-e"  #'evil-end-of-line)
+(map! :nv "t" #'evilmi-jump-items)
+(map! :nv "P" #'consult-yank-from-kill-ring)
 (map! :leader (:prefix "w"
-               :desc "delete other windows" "o" #'delete-other-windows))
+               :desc "delete-other-windows" "o" #'delete-other-windows))
 (map! :leader (:prefix "b"
-               :desc "Delete Other Windows" "o" #'delete-other-windows))
-write-file
+               :desc "write-file" "w" #'write-file))
+(map! :leader (:prefix "b"
+               :desc "switch-to-buffer" "l" #'consult-buffer))
+(map! :leader (:prefix "f"
+               :desc "dired-jump" "j" #'dired-jump))
+(map! :map org-mode-map
+      "M-n" #'outline-next-visible-heading
+      "M-p" #'outline-previous-visible-heading)
+
 (bind-key "<f11>" #'xah-previous-user-buffer)
 (bind-key "<f12>" #'xah-next-user-buffer)
 (bind-key "<C-f11>" #'centaur-tabs-backward)

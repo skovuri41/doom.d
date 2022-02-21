@@ -55,3 +55,8 @@
 (package! git-link)
 (package! imenu-list)
 (package! key-chord)
+(package! evil-matchit)
+(package! beacon)
+(package! org-autolist)
+(package! easy-kill)
+(package! outshine)
