@@ -12,8 +12,7 @@ version 2016-06-18"
       nil
     (if (string-equal major-mode "dired-mode")
         nil
-      t
-      )))
+      t)))
 
 (defun xah-next-user-buffer ()
   "Switch to the next user buffer.

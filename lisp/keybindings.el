@@ -14,7 +14,21 @@
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "M-j") 'isearch-yank-word-or-char)
 
-(map! :nir "C-d"  #'lispy-delete)
+(map! :nir "C-d" #'lispy-delete)
+
+(map!
+ (:mode (clojure-mode clojurec-mode clojurescript-mode)
+  :in "C-<return>" #'cider-eval-last-sexp
+  :in "C-M-<return>" #'cider-inspect-last-sexp
+  :in "M-S-<return>" #'cider-inspect-defun-at-point
+  :in "M-<return>" #'cider-eval-defun-at-point
+  :i "M-." #'cider-find-var))
+
+(after! lispy
+  (lispy-define-key lispy-mode-map "y" #'lispy-new-copy)
+  (lispy-define-key lispy-mode-map "n" #'lispy-occur)
+  (lispy-define-key lispy-mode-map "X" #'lispy-splice))
+
 (map! :nv "C-a"  #'evil-first-non-blank)
 (map! :nv "C-e"  #'evil-end-of-line)
 (map! :nv "t" #'evilmi-jump-items)
@@ -27,12 +41,16 @@
                :desc "switch-to-buffer" "l" #'consult-buffer))
 (map! :leader (:prefix "f"
                :desc "dired-jump" "j" #'dired-jump))
+(map! :leader (:prefix "f"
+               :desc "treemacs toggle" "t" #'+treemacs/toggle))
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
 
 (bind-key "<f11>" #'xah-previous-user-buffer)
+(bind-key "<M-f11>" #'evil-prev-buffer)
 (bind-key "<f12>" #'xah-next-user-buffer)
+(bind-key "<M-f12>" #'evil-next-buffer)
 (bind-key "<C-f11>" #'centaur-tabs-backward)
 (bind-key "<C-f12>" #'centaur-tabs-forward)
 
@@ -102,7 +120,10 @@
 (defalias 'psp 'projectile-switch-project)
 
 ;; ;pretty print
-(defalias 'ppx'pretty-print-xml-region)
+(defalias 'ppx 'pretty-print-xml-region)
 (defalias 'ppj 'beautify-json)
+;; org mode
+(defalias 'oih 'org-insert-heading)
+(defalias 'clip 'org-cliplink)
 
 (set-register ?i '(file . "~/.doom.d/init.el"))

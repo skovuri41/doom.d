@@ -17,7 +17,6 @@
       doom-unicode-font (font-spec :family "JuliaMono")
       ;; doom-serif-font (font-spec :family "IBM Plex Mono" :weight 'light)
       )
-
 (defvar required-fonts '("JetBrains.*" "Overpass" "JuliaMono" "IBM Plex Mono" "Alegreya"))
 
 (defvar available-fonts
@@ -110,9 +109,6 @@
     (evilmi-load-plugin-rules '(clojure-mode) '(simple))))
 
 (use-package! beacon
-  ;; Whenever the window scrolls a light will shine on top of your
-  ;; cursor so you know where it is.
-  ;; Homepage: https://github.com/Malabarba/beacon
   :init
   (progn
     (setq
@@ -125,7 +121,20 @@
     (beacon-mode 1)))
 
 (after! org
-  (add-hook 'org-mode-hook (lambda () (org-autolist-mode))))
+  (add-hook 'org-mode-hook (lambda () (org-autolist-mode)))
+  (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+  (add-to-list 'auto-mode-alist '("\\.txt$" . org-mode))
+  (add-to-list 'auto-mode-alist '(".*/[0-9]*$" . org-mode)) ;; Journal entries
+  (add-hook 'org-mode-hook #'hl-line-mode)
+  (setq org-file-apps
+        '((auto-mode . emacs)
+          (directory . emacs)
+          ("\\.org\\'" . emacs)
+          ("\\.txt\\'" . emacs)
+          ("\\.mm\\'" . default)
+          ("\\.x?html?\\'" . system)
+          ("\\.pdf::\\([0-9]+\\)?\\'" . "zathura %s -P %1")
+          ("\\.pdf\\'" . "zathura %s"))))
 
 (use-package! org-superstar
   :init
@@ -160,3 +169,33 @@
            "* %?"
            :file-name "daily/%<%Y-%m-%d>.org"
            :head "#+title: %<%Y-%m-%d>\n\n"))))
+
+(after! dired
+  ;; (add-hook! 'dired-mode-hook 'dired-hide-details-mode)
+  (add-hook! 'dired-mode-hook 'hl-line-mode)
+  (setq ls-lisp-dirs-first t)
+  (put 'dired-find-alternate-file 'disabled nil)
+  (setq delete-by-moving-to-trash t)
+  (setq dired-dwim-target t)
+  (setq dired-recursive-copies (quote always))
+  (setq dired-recursive-deletes (quote top)))
+
+(use-package! dired-narrow
+  :after dired
+  :config
+    (map! :map dired-mode-map
+      :n  "/" 'dired-narrow-fuzzy))
+
+(use-package! dired-open
+  :after dired
+  :config
+  (setq open-extensions
+      '(("webm" . "mpv")
+        ("avi" . "mpv")
+        ("mp3" . "mpv")
+        ("mp4" . "mpv")
+        ("m4a" . "mpv")
+        ("mkv" . "mpv")
+        ("ogv" . "mpv")
+        ("pdf" . "zathura")))
+  (setq dired-open-extensions open-extensions))
