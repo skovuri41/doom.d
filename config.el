@@ -80,8 +80,9 @@
    '(("" . "\\`+?evil[-:]?\\(?:a-\\)?\\(.*\\)") . (nil . "◂\\1"))
    '(("\\`g s" . "\\`evilem--?motion-\\(.*\\)") . (nil . "◃\\1"))))
 
-(load! "lisp/keybindings.el")
+(load! "lisp/clojure.el")
 (load! "lisp/defuns.el")
+(load! "lisp/keybindings.el")
 
 (use-package! easy-kill
   :bind*
@@ -199,3 +200,10 @@
         ("ogv" . "mpv")
         ("pdf" . "zathura")))
   (setq dired-open-extensions open-extensions))
+
+
+(after! cider
+       (set-popup-rules!
+         '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
+           ("^\\*cider-repl.*\\*"  :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
+           ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))

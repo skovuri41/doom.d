@@ -18,13 +18,26 @@
 
 (map!
  (:mode (clojure-mode clojurec-mode clojurescript-mode)
-  :in "C-<return>" #'cider-eval-last-sexp
-  :in "C-M-<return>" #'cider-inspect-last-sexp
-  :in "M-S-<return>" #'cider-inspect-defun-at-point
-  :in "M-<return>" #'cider-eval-defun-at-point
+  :in "C-<return> e" #'doom/cider-send-last-sexp-to-repl
+  :in "C-<return> d" #'doom/cider-send-function-to-repl
+  :in "C-<return> n" #'doom/cider-send-ns-form-to-repl
+  :in "C-<return> r" #'doom/cider-send-region-to-repl
   :i "M-." #'cider-find-var))
 
+(after! lsp-clojure
+  (map! (:localleader
+         (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
+          (:prefix ("r" . repl)
+           "l" #'doom/cider-clear-repl-buffer
+           "o" #'doom/cider-clear-repl-output)))))
+
+(map!
+ (:map cider-inspector-mode-map
+  (:n "<tab>" #'cider-inspector-next-inspectable-object
+   :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
+
 (after! lispy
+  (lispy-define-key lispy-mode-map "t" #'lispy-different)
   (lispy-define-key lispy-mode-map "y" #'lispy-new-copy)
   (lispy-define-key lispy-mode-map "n" #'lispy-occur)
   (lispy-define-key lispy-mode-map "X" #'lispy-splice))
@@ -43,6 +56,9 @@
                :desc "dired-jump" "j" #'dired-jump))
 (map! :leader (:prefix "f"
                :desc "treemacs toggle" "t" #'+treemacs/toggle))
+(map! (:when (featurep! :ui treemacs)
+       "<f9>" #'+treemacs/toggle
+       "<C-f9>" #'treemacs-find-file))
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
