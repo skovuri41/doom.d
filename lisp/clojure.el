@@ -1,15 +1,34 @@
-(use-package! cider
+(use-package! clojure-mode
+  :init
+  (add-to-list 'auto-mode-alist '("\\.bb\\'" . clojure-mode))
+
   :config
-  (defun doom//cider-eval-in-repl-no-focus (form)
-    "Insert FORM in the REPL buffer and eval it."
-    (while (string-match "\\`[ \t\n\r]+\\|[ \t\n\r]+\\'" form)
-      (setq form (replace-match "" t t form)))
-    (with-current-buffer (cider-current-repl-buffer)
-      (let ((pt-max (point-max)))
-        (goto-char pt-max)
-        (insert form)
-        (indent-region pt-max (point))
-        (cider-repl-return))))
+  (defun bb-jack-in ()
+    (interactive)
+    (start-process "bb" "bb-nrepl" "bb" "--nrepl-server" "1667")
+    (sleep-for 0.2)
+    (cider-connect '(:port 1667 :host "localhost")))
+
+  (defun bb-connect ()
+    (interactive)
+    (cider-connect '(:port 1667 :host "localhost"))))
+
+(use-package! cider
+ :init
+ :config
+ (defun doom//cider-eval-in-repl-no-focus (form)
+   "Insert FORM in the REPL buffer and eval it."
+   (while (string-match "\\`[ \t\n\r]+\\|[ \t\n\r]+\\'" form)
+     (setq form (replace-match "" t t form)))
+   (with-current-buffer (cider-current-repl-buffer)
+     (let ((pt-max (point-max)))
+       (goto-char pt-max)
+       (insert form)
+       (indent-region pt-max (point))
+       (cider-repl-return))))
+
+   (use-package! cider-eval-sexp-fu
+    :after (clojure-mode cider))
 
   (defun doom/cider-send-last-sexp-to-repl ()
     "Send last sexp to REPL and evaluate it without changing

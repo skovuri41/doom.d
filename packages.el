@@ -61,3 +61,6 @@
 (package! easy-kill)
 (package! dired-open)
 (package! outshine)
+(package! tldr)
+(package! cider-eval-sexp-fu)
+(package! eval-sexp-fu)

@@ -63,3 +63,32 @@ Version 2016-06-19"
   (let ((i 0))
     (while (and (not (string-equal "*" (substring (buffer-name) 0 1))) (< i 20))
       (setq i (1+ i)) (previous-buffer))))
+
+
+(defun user/eval-list-dwim ()
+  (interactive)
+  (cond ((eq major-mode 'emacs-lisp-mode)
+         (call-interactively 'eval-sexp-fu-eval-sexp-inner-list))
+        ((eq major-mode 'clojure-mode)
+         (call-interactively 'eval-sexp-fu-cider-eval-sexp-inner-list))))
+
+(defun user/pprint-eval-list-dwim ()
+  (interactive)
+  (cond ((eq major-mode 'emacs-lisp-mode)
+         (call-interactively 'eval-sexp-fu-eval-sexp-inner-list))
+        ((eq major-mode 'clojure-mode)
+         (call-interactively 'eval-sexp-fu-cider-pprint-eval-sexp-inner-list))))
+
+(defun user/eval-sexp-dwim ()
+  (interactive)
+  (cond ((eq major-mode 'emacs-lisp-mode)
+         (call-interactively 'eval-sexp-fu-eval-sexp-inner-sexp))
+        ((eq major-mode 'clojure-mode)
+         (call-interactively 'eval-sexp-fu-cider-eval-sexp-inner-sexp))))
+
+(defun user/pprint-eval-sexp-dwim ()
+  (interactive)
+  (cond ((eq major-mode 'emacs-lisp-mode)
+         (call-interactively 'eval-sexp-fu-eval-sexp-inner-sexp))
+        ((eq major-mode 'clojure-mode)
+         (call-interactively 'eval-sexp-fu-cider-pprint-eval-sexp-inner-sexp))))

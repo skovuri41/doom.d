@@ -34,6 +34,10 @@
              required-fonts)))
 
 (setq doom-theme 'doom-one)
+;; Revert buffers when the underlying file has changed
+(global-auto-revert-mode 1)
+;; Revert Dired and other buffers
+(setq global-auto-revert-non-file-buffers t)
 (setq org-directory "~/Documents/org/")
 (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
 (add-to-list 'auto-mode-alist '("\\.txt$" . org-mode))
@@ -135,13 +139,15 @@
           ("\\.mm\\'" . default)
           ("\\.x?html?\\'" . system)
           ("\\.pdf::\\([0-9]+\\)?\\'" . "zathura %s -P %1")
-          ("\\.pdf\\'" . "zathura %s"))))
+          ("\\.pdf\\'" . "zathura %s")))
+  (setq org-ctrl-k-protect-subtree t))
+
 
 (use-package! org-superstar
   :init
   (setq org-startup-indented t
-          org-ellipsis " ▼ " ;; folding symbol
-          org-superstar-headline-bullets-list '("▶" "◉" "○" "»")))
+        org-ellipsis " ▼ " ;; folding symbol
+        org-superstar-headline-bullets-list '("▶" "◉" "○" "»")))
 
 (use-package! outshine
               :commands (outshine-mode))
@@ -191,19 +197,28 @@
   :after dired
   :config
   (setq open-extensions
-      '(("webm" . "mpv")
-        ("avi" . "mpv")
-        ("mp3" . "mpv")
-        ("mp4" . "mpv")
-        ("m4a" . "mpv")
-        ("mkv" . "mpv")
-        ("ogv" . "mpv")
-        ("pdf" . "zathura")))
+        '(("webm" . "mpv")
+          ("avi" . "mpv")
+          ("mp3" . "mpv")
+          ("mp4" . "mpv")
+          ("m4a" . "mpv")
+          ("mkv" . "mpv")
+          ("ogv" . "mpv")
+          ("png" . "feh")
+          ("pdf" . "zathura")))
   (setq dired-open-extensions open-extensions))
 
+(use-package! eval-sexp-fu
+  :hook ((lisp-mode emacs-lisp-mode eshell-mode) . +eval-sexp-fu--init)
+  :custom-face
+  (eval-sexp-fu-flash ((t (:inherit isearch))))
+  (eval-sexp-fu-flash-error ((t (:inherit error :inverse-video t))))
+  :config
+  (defun +eval-sexp-fu--init ()
+    (require 'eval-sexp-fu)))
 
 (after! cider
-       (set-popup-rules!
-         '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
-           ("^\\*cider-repl.*\\*"  :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
-           ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))
+  (set-popup-rules!
+    '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
+      ("^\\*cider-repl.*\\*" :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
+      ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))
