@@ -60,15 +60,16 @@
 (map! (:when (featurep! :ui treemacs)
        "<f8>" #'+treemacs/toggle
        "<C-f8>" #'treemacs-find-file))
+(map! (:when (featurep! :lang org +roam2)
+       "<f7>" #'org-roam-buffer-toggle))
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
-
-;; (bind-key "<f11>" #'xah-previous-user-buffer)
-(bind-key "<f11>" #'better-jumper-jump-backward)
+(bind-key "<f11>" #'xah-previous-user-buffer)
+;; (bind-key "<f11>" #'better-jumper-jump-backward)
 (bind-key "<M-f11>" #'evil-prev-buffer)
-;; (bind-key "<f12>" #'xah-next-user-buffer)
-(bind-key "<f12>" #'better-jumper-jump-forward)
+(bind-key "<f12>" #'xah-next-user-buffer)
+;; (bind-key "<f12>" #'better-jumper-jump-forward)
 (bind-key "<M-f12>" #'evil-next-buffer)
 (bind-key "<C-f11>" #'centaur-tabs-backward)
 (bind-key "<C-f12>" #'centaur-tabs-forward)
@@ -146,3 +147,4 @@
 (defalias 'clip 'org-cliplink)
 
 (set-register ?i '(file . "~/.doom.d/init.el"))
+(set-register ?c '(file . "~/.doom.d/config.el"))
