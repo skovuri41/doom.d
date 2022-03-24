@@ -6,7 +6,7 @@
   (progn
     (add-hook 'clojure-mode-hook 'aggressive-indent-mode)
     (setq clojure-align-forms-automatically t)
-    ;; (setq clojure-toplevel-inside-comment-form t)
+    (setq clojure-toplevel-inside-comment-form t)
 
     (define-clojure-indent
       (defroutes 'defun)
@@ -96,7 +96,7 @@
 (use-package! cider
   :init
   :config
-  (setq cider-print-fn 'zprint)
+  (setq cider-print-fn 'fipp)
   (setq cider-test-show-report-on-success t)
   (setq cider-repl-display-help-banner nil)
   (add-hook
@@ -122,7 +122,12 @@
 the focus."
     (interactive)
     (doom/cider-clear-repl-buffer)
-    (doom//cider-eval-in-repl-no-focus (cider-last-sexp)))
+    ;; (lispyville-end-of-defun)
+    (evil-append 1)
+    (just-one-space)
+    (evil-force-normal-state)
+    (doom//cider-eval-in-repl-no-focus (cider-last-sexp))
+    (delete-horizontal-space))
 
   (defun doom/cider-send-last-sexp-to-repl-focus ()
     "Send last sexp to REPL and evaluate it and switch to the REPL in

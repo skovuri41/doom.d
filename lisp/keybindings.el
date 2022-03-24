@@ -42,6 +42,10 @@
 
   (map! (:localleader
          (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
+          (:prefix ("e" . eval)
+           "." #'doom/cider-send-last-sexp-to-repl
+           "d" #'cider-eval-defun-or-region
+           "n" #'doom/cider-send-ns-form-to-repl)
           (:prefix ("r" . repl)
            "t" #'toggle-nrepl-buffer
            "l" #'doom/cider-clear-repl-buffer
