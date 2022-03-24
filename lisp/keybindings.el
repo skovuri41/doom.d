@@ -14,7 +14,7 @@
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "M-j") 'isearch-yank-word-or-char)
 
-(map! :nir "C-d" #'lispy-delete)
+
 
 (map!
  (:mode (clojure-mode clojurec-mode clojurescript-mode)
@@ -25,10 +25,25 @@
   :in "C-<return> c" #'user/eval-list-dwim
   :i "M-." #'cider-find-var))
 
-(after! lsp-clojure
+(after! lispy
+  (map! (:localleader
+         (:map (cider-repl-mode-map)
+          (:prefix ("r" . "repl")
+           "n" #'cider-repl-set-ns
+           "q" #'cider-quit
+           "r" #'cider-ns-refresh
+           "R" #'cider-restart
+           "t" #'toggle-nrepl-buffer
+           "l" #'doom/cider-clear-repl-buffer
+           "o" #'doom/cider-clear-repl-output
+           "b" #'cider-switch-to-last-clojure-buffer
+           "B" #'+clojure/cider-switch-to-repl-buffer-and-switch-ns
+           "c" #'cider-find-and-clear-repl-output))))
+
   (map! (:localleader
          (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
           (:prefix ("r" . repl)
+           "t" #'toggle-nrepl-buffer
            "l" #'doom/cider-clear-repl-buffer
            "o" #'doom/cider-clear-repl-output)))))
 
@@ -38,10 +53,23 @@
    :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
 
 (after! lispy
+  (setq lispy-safe-copy t
+        lispy-safe-delete t
+        lispy-safe-paste t)
   (lispy-define-key lispy-mode-map "t" #'lispy-different)
   (lispy-define-key lispy-mode-map "y" #'lispy-new-copy)
   (lispy-define-key lispy-mode-map "n" #'lispy-occur)
-  (lispy-define-key lispy-mode-map "X" #'lispy-splice))
+  (lispy-define-key lispy-mode-map "X" #'lispy-splice)
+  (lispy-define-key lispy-mode-map "d" 'lispy-delete)
+  (lispy-define-key lispy-mode-map "p" 'lispy-paste)
+  (lispy-define-key lispy-mode-map "P" 'lispy-eval-other-window)
+  (map! :nir "C-d" #'lispy-delete-or-splice-or-slurp)
+  (map! :nv "(" #'lispy-parens)
+  (map! :nv "{" #'lispy-braces)
+  (map! :nv "}" #'lispy-brackets)
+  (map! :nv "\"" #'lispy-quotes)
+  ;; (define-key xah-fly-key-map (kbd ";") 'lispy-comment)
+  )
 
 (map! :nv "C-a"  #'evil-first-non-blank)
 (map! :nv "C-e"  #'evil-end-of-line)
@@ -62,6 +90,11 @@
        "<C-f8>" #'treemacs-find-file))
 (map! (:when (featurep! :lang org +roam2)
        "<f7>" #'org-roam-buffer-toggle))
+(map! "<f7>" '(lambda () (interactive)
+                (if (memq major-mode '(org-mode))
+                    (org-roam-buffer-toggle)
+                  (lsp-ui-imenu))))
+
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)

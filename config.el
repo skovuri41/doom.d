@@ -33,6 +33,8 @@
                  font))
              required-fonts)))
 
+(setq fancy-splash-image (concat doom-private-dir "splash.png"))
+
 (setq doom-theme 'doom-one)
 ;; Revert buffers when the underlying file has changed
 (global-auto-revert-mode 1)
@@ -222,3 +224,8 @@
     '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
       ("^\\*cider-repl.*\\*" :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
       ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))
+
+(add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode)
+
+(after! lsp
+  (setq lsp-ui-imenu-auto-refresh t))

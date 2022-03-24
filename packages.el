@@ -64,3 +64,4 @@
 (package! tldr)
 (package! cider-eval-sexp-fu)
 (package! eval-sexp-fu)
+(package! aggressive-indent)

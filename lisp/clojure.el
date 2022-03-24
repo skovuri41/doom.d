@@ -1,39 +1,127 @@
-(use-package! clojure-mode
+(use-package clojure-mode
   :init
   (add-to-list 'auto-mode-alist '("\\.bb\\'" . clojure-mode))
-
+  (add-to-list 'auto-mode-alist '("\\.edn$'" . clojure-mode))
   :config
-  (defun bb-jack-in ()
-    (interactive)
-    (start-process "bb" "bb-nrepl" "bb" "--nrepl-server" "1667")
-    (sleep-for 0.2)
-    (cider-connect '(:port 1667 :host "localhost")))
+  (progn
+    (add-hook 'clojure-mode-hook 'aggressive-indent-mode)
+    (setq clojure-align-forms-automatically t)
+    ;; (setq clojure-toplevel-inside-comment-form t)
 
-  (defun bb-connect ()
-    (interactive)
-    (cider-connect '(:port 1667 :host "localhost"))))
+    (define-clojure-indent
+      (defroutes 'defun)
+      (GET 2)
+      (POST 2)
+      (PUT 2)
+      (DELETE 2)
+      (HEAD 2)
+      (ANY 2)
+      (context 2)
+      (let-routes 1))
+
+    (define-clojure-indent
+      (form-to 1))
+
+    (define-clojure-indent
+      (match 1)
+      (are 2)
+      (checking 2)
+      (async 1))
+
+    (define-clojure-indent
+      (select 1)
+      (insert 1)
+      (update 1)
+      (delete 1))
+
+    (define-clojure-indent
+      (run* 1)
+      (fresh 1))
+
+    (define-clojure-indent
+      (extend-freeze 2)
+      (extend-thaw 1))
+
+    (define-clojure-indent
+      (go-loop 1))
+
+    (define-clojure-indent
+      (this-as 1)
+      (specify 1)
+      (specify! 1))
+
+    (define-clojure-indent
+      (s/fdef 1))
+
+    (define-clojure-indent
+      (rf/reg-event-db 1)
+      (rf/reg-event-fx 1)
+      (rf/reg-sub 1)
+      (rf/reg-fx 1)
+      (rf/reg-cofx 1))
+
+    (setq clojure--prettify-symbols-alist
+          '(("fn" . ?λ)
+            (">=" . ?≥)
+            ("<=" . ?≤)))
+
+    (add-hook 'clojurescript-mode-hook
+              '(lambda ()
+                 (add-to-list 'imenu-generic-expression
+                              '("re-frame" "(reg-\\(event-fx\\|event-db\\|sub\\)[ \\|\n]*\\(:[^ \\|\n]*\\)" 2) t)))
+
+    (after! all-the-icons
+      (add-to-list 'all-the-icons-icon-alist
+                   '("\\.edn$"
+                     all-the-icons-alltheicon
+                     "clojure"
+                     :height 1.0
+                     :face all-the-icons-lyellow
+                     :v-adjust 0.0))
+      (add-to-list 'all-the-icons-icon-alist
+                   '("\\.cljc?$"
+                     all-the-icons-alltheicon
+                     "clojure"
+                     :height 1.0
+                     :face all-the-icons-lgreen
+                     :v-adjust 0.0))
+      (add-to-list 'all-the-icons-icon-alist
+                   '("\\.cljs$"
+                     all-the-icons-fileicon
+                     "cljs"
+                     :height 1.0
+                     :face all-the-icons-lgreen
+                     :v-adjust 0.0)))))
 
 (use-package! cider
- :init
- :config
- (defun doom//cider-eval-in-repl-no-focus (form)
-   "Insert FORM in the REPL buffer and eval it."
-   (while (string-match "\\`[ \t\n\r]+\\|[ \t\n\r]+\\'" form)
-     (setq form (replace-match "" t t form)))
-   (with-current-buffer (cider-current-repl-buffer)
-     (let ((pt-max (point-max)))
-       (goto-char pt-max)
-       (insert form)
-       (indent-region pt-max (point))
-       (cider-repl-return))))
+  :init
+  :config
+  (setq cider-print-fn 'zprint)
+  (setq cider-test-show-report-on-success t)
+  (setq cider-repl-display-help-banner nil)
+  (add-hook
+   'cider-popup-buffer-mode-hook
+   '(lambda ()
+      (local-set-key "\C-g" 'cider-popup-buffer-quit)))
+  (defun doom//cider-eval-in-repl-no-focus (form)
+    "Insert FORM in the REPL buffer and eval it."
+    (while (string-match "\\`[ \t\n\r]+\\|[ \t\n\r]+\\'" form)
+      (setq form (replace-match "" t t form)))
+    (with-current-buffer (cider-current-repl-buffer)
+      (let ((pt-max (point-max)))
+        (goto-char pt-max)
+        (insert form)
+        (indent-region pt-max (point))
+        (cider-repl-return))))
 
-   (use-package! cider-eval-sexp-fu
+  (use-package! cider-eval-sexp-fu
     :after (clojure-mode cider))
 
   (defun doom/cider-send-last-sexp-to-repl ()
     "Send last sexp to REPL and evaluate it without changing
 the focus."
     (interactive)
+    (doom/cider-clear-repl-buffer)
     (doom//cider-eval-in-repl-no-focus (cider-last-sexp)))
 
   (defun doom/cider-send-last-sexp-to-repl-focus ()
@@ -47,6 +135,7 @@ the focus."
     "Send region to REPL and evaluate it without changing
 the focus."
     (interactive "r")
+    (doom/cider-clear-repl-buffer)
     (doom//cider-eval-in-repl-no-focus
      (buffer-substring-no-properties start end)))
 
@@ -62,6 +151,7 @@ the focus."
     "Send current function to REPL and evaluate it without changing
 the focus."
     (interactive)
+    (doom/cider-clear-repl-buffer)
     (doom//cider-eval-in-repl-no-focus (cider-defun-at-point)))
 
   (defun doom/cider-send-function-to-repl-focus ()
@@ -75,6 +165,7 @@ insert state'."
     "Send buffer's ns form to REPL and evaluate it without changing
 the focus."
     (interactive)
+    (doom/cider-clear-repl-buffer)
     (doom//cider-eval-in-repl-no-focus (cider-ns-form)))
 
   (defun doom/cider-send-ns-form-to-repl-focus ()
