@@ -41,12 +41,17 @@
            "c" #'cider-find-and-clear-repl-output))))
 
   (map! (:localleader
+         (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map cider-repl-mode-map)
+          (:prefix ("x" . "xtras")
+           "s" #'cider-selector))))
+
+  (map! (:localleader
          (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
-          (:prefix ("e" . eval)
+          (:prefix ("e" . "eval")
            "." #'doom/cider-send-last-sexp-to-repl
            "d" #'cider-eval-defun-or-region
            "n" #'doom/cider-send-ns-form-to-repl)
-          (:prefix ("r" . repl)
+          (:prefix ("r" . "repl")
            "t" #'toggle-nrepl-buffer
            "l" #'doom/cider-clear-repl-buffer
            "o" #'doom/cider-clear-repl-output)))))
@@ -55,6 +60,15 @@
  (:map cider-inspector-mode-map
   (:n "<tab>" #'cider-inspector-next-inspectable-object
    :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
+
+(map!
+ (:map lsp-ui-imenu-mode-map
+  (:n "l" #'lsp-ui-imenu--view
+   :n "<return>" #'lsp-ui-imenu--visit)))
+
+(evil-collection-define-key 'normal 'lsp-ui-imenu-mode-map
+  (kbd "<return>") 'lsp-ui-imenu--visit
+  (kbd "l") 'lsp-ui-imenu--view)
 
 (after! lispy
   (setq lispy-safe-copy t
@@ -90,15 +104,14 @@
 (map! :leader (:prefix "f"
                :desc "treemacs toggle" "t" #'+treemacs/toggle))
 (map! (:when (featurep! :ui treemacs)
-       "<f8>" #'+treemacs/toggle
-       "<C-f8>" #'treemacs-find-file))
-(map! (:when (featurep! :lang org +roam2)
-       "<f7>" #'org-roam-buffer-toggle))
-(map! "<f7>" '(lambda () (interactive)
-                (if (memq major-mode '(org-mode))
+       "<f7>" #'+treemacs/toggle
+       "<C-f7>" #'treemacs-find-file))
+(map! "<f8>" '(lambda () (interactive)
+                (if (org-roam-buffer-p (current-buffer))
                     (org-roam-buffer-toggle)
-                  (lsp-ui-imenu))))
-
+                  (imenu-lsp-ui-smart-toggle))))
+(map! :nv "g]"  #'lispyville-forward-list)
+(map! :nv "g["  #'lispyville-backward-list-begin)
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
@@ -182,6 +195,7 @@
 ;; org mode
 (defalias 'oih 'org-insert-heading)
 (defalias 'clip 'org-cliplink)
+(defalias 'link 'ar/org-insert-link-dwim)
 
 (set-register ?i '(file . "~/.doom.d/init.el"))
 (set-register ?c '(file . "~/.doom.d/config.el"))

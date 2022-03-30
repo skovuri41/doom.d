@@ -5,6 +5,7 @@
   :config
   (progn
     (add-hook 'clojure-mode-hook 'aggressive-indent-mode)
+    (add-hook 'before-save-hook 'cider-format-buffer t t)
     (setq clojure-align-forms-automatically t)
     (setq clojure-toplevel-inside-comment-form t)
 
