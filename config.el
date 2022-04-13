@@ -229,3 +229,5 @@
 
 (after! lsp
   (setq lsp-ui-imenu-auto-refresh t))
+
+(setq which-key-use-C-h-commands t)

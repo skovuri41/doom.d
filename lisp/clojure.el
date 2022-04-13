@@ -92,7 +92,19 @@
                      "cljs"
                      :height 1.0
                      :face all-the-icons-lgreen
-                     :v-adjust 0.0)))))
+                     :v-adjust 0.0))))
+  (defun clerk-show ()
+    (interactive)
+    (save-buffer)
+    (let
+        ((filename
+          (buffer-file-name)))
+      (when filename
+        (cider-interactive-eval
+         (concat "(nextjournal.clerk/show! \"" filename "\")")))))
+
+  ;; (define-key clojure-mode-map (kbd "<M-return>") 'clerk-show)
+  )
 
 (use-package! cider
   :init

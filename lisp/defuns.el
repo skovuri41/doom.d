@@ -123,3 +123,12 @@ Version 2016-06-19"
                                                           'title))))))))
           (t
            (call-interactively 'org-insert-link)))))
+
+(defun eval-n-defuns (n)
+  "Evaluate N top-level forms, starting with the current one."
+  (interactive "P")
+  (+eval/region (car (bounds-of-thing-at-point 'defun))
+                (save-excursion
+                  (dotimes (_ (or n 2))
+                    (end-of-defun))
+                  (point))))
