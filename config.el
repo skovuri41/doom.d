@@ -231,3 +231,8 @@
   (setq lsp-ui-imenu-auto-refresh t))
 
 (setq which-key-use-C-h-commands t)
+(setq which-key-side-window-max-height 0.3)
+
+(require 'em-alias)
+(require 'eshell)
+(eshell/alias "0" "(eshell/cd (suggest-project-root))")

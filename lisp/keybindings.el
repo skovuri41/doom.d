@@ -191,7 +191,7 @@
 
 ;; ;pretty print
 (defalias 'ppx 'pretty-print-xml-region)
-(defalias 'ppj 'beautify-json)
+(defalias 'ppj 'json-pretty-print)
 ;; org mode
 (defalias 'oih 'org-insert-heading)
 (defalias 'clip 'org-cliplink)

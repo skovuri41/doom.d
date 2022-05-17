@@ -132,3 +132,24 @@ Version 2016-06-19"
                   (dotimes (_ (or n 2))
                     (end-of-defun))
                   (point))))
+
+(defun my-delete-leading-whitespace (start end)
+  "Delete whitespace at the beginning of each line in region."
+  (interactive "*r")
+  (save-excursion
+    (if (not (bolp)) (forward-line 1))
+    (delete-whitespace-rectangle (point) end nil)))
+
+(defun suggest-project-root ()
+  "Get project root."
+  (or
+   (when (featurep 'projectile) (condition-case nil
+                                    (projectile-project-root)
+                                  (error nil)))
+   (when (featurep 'project)
+     (when-let ((project (project-current)))
+       (if (fboundp 'project-root)
+           (project-root project)
+         (car (with-no-warnings
+                (project-roots project))))))
+   default-directory))

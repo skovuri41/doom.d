@@ -64,7 +64,33 @@
     (setq clojure--prettify-symbols-alist
           '(("fn" . ?λ)
             (">=" . ?≥)
-            ("<=" . ?≤)))
+            ("<=" . ?≤)
+            ("not=" . ?≠)
+            ("identical?" . ?≡)))
+
+    (defun clojure-fancify-symbols (mode)
+      "Pretty symbols for Clojure's anonymous functions and sets,
+       like (λ [a] (+ a 5)), ƒ(+ % 5), and ∈{2 4 6}."
+      (font-lock-add-keywords mode
+                              `(("(\\(fn\\)[\n\[[:space:]]"
+                                 (0 (progn (compose-region (match-beginning 1)
+                                                           (match-end 1) "λ"))))
+                                ("(\\(partial\\)[\[[:space:]]"
+                                 (0 (progn (compose-region (match-beginning 1)
+                                                           (match-end 1) "Ƥ"))))
+                                ("(\\(comp\\)[\n\[[:space:]]"
+                                 (0 (progn (compose-region (match-beginning 1)
+                                                           (match-end 1) "∘"))))
+                                ("\\(#\\)("
+                                 (0 (progn (compose-region (match-beginning 1)
+                                                           (match-end 1) "ƒ"))))
+                                ("\\(#\\){"
+                                 (0 (progn (compose-region (match-beginning 1)
+                                                           (match-end 1) "∈")))))))
+
+    (dolist (m '(clojure-mode clojurescript-mode clojurec-mode clojurex-mode cider-mode cider-repl-mode))
+      (clojure-fancify-symbols m))
+
 
     (add-hook 'clojurescript-mode-hook
               '(lambda ()
@@ -136,11 +162,13 @@ the focus."
     (interactive)
     (doom/cider-clear-repl-buffer)
     ;; (lispyville-end-of-defun)
+    ;; (evil-next-close-paren)
     (evil-append 1)
     (just-one-space)
     (evil-force-normal-state)
     (doom//cider-eval-in-repl-no-focus (cider-last-sexp))
-    (delete-horizontal-space))
+    (delete-horizontal-space)
+    (save-buffer))
 
   (defun doom/cider-send-last-sexp-to-repl-focus ()
     "Send last sexp to REPL and evaluate it and switch to the REPL in
