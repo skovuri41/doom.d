@@ -1,4 +1,4 @@
-;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+ ;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
 (setq user-full-name "Shyam Kovuri"
       user-mail-address "shyam32@fastmail.net")
@@ -11,9 +11,9 @@
 ;; + `doom-big-font' -- used for `doom-big-font-mode'; use this for
 ;;   presentations or streaming.
 ;;
-(setq doom-font (font-spec :family "JetBrains Mono" :size 16)
-      doom-big-font (font-spec :family "JetBrains Mono" :size 18)
-      doom-variable-pitch-font (font-spec :family "Overpass" :size 16)
+(setq doom-font (font-spec :family "JetBrains Mono" :size 20)
+      doom-big-font (font-spec :family "JetBrains Mono" :size 22)
+      doom-variable-pitch-font (font-spec :family "Overpass" :size 20)
       doom-unicode-font (font-spec :family "JuliaMono")
       ;; doom-serif-font (font-spec :family "IBM Plex Mono" :weight 'light)
       )
@@ -236,3 +236,104 @@
 (require 'em-alias)
 (require 'eshell)
 (eshell/alias "0" "(eshell/cd (suggest-project-root))")
+
+(use-package! cape
+  :config
+  (map! (:prefix "C-c f"
+         :i "p" #'completion-at-point
+         :i "d" #'cape-dabbrev
+         :i "f" #'cape-file
+         :i "k" #'cape-keyword
+         :i "i" #'cape-ispell
+         :i "s" #'cape-symbol
+         :i "t" #'cape-tex))
+  :init
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-keyword))
+
+(use-package! corfu
+  :bind (:map corfu-map
+              ("<escape>" . corfu-quit)
+              ("C-l" . corfu-insert)
+              ("C-j" . corfu-next)
+              ("C-k" . corfu-previous))
+  :config
+  (setq corfu-cycle t
+        corfu-auto t
+        corfu-auto-prefix 2
+        corfu-auto-delay 0.01
+        corfu-separator ?\s
+        corfu-quit-at-boundary nil
+        corfu-quit-no-match t
+        corfu-preview-current nil
+        corfu-preselect-first t
+        corfu-on-exact-match nil
+        corfu-echo-documentation t
+        corfu-scroll-margin 10)
+  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (evil-make-overriding-map corfu-map)
+  (map! :i "C-e" #'completion-at-point)
+  :init
+  (corfu-mode +1)
+  ;;(corfu-doc-mode +1)
+  )
+
+(after! evil-org
+  (map! (:map evil-org-mode-map
+         :i "C-j" nil
+         :i "C-k" nil
+         :i "C-;" nil
+         :i "C-l" nil
+         :i "<return>" nil
+         :i "RET" nil)))
+
+;; (use-package! corfu-doc
+;;   :bind (:map corfu-map
+;;               ("C-;" . corfu-doc-toggle)
+;;               ("C-n" . corfu-doc-scroll-down)
+;;               ("C-p" . corfu-doc-scroll-up))
+;;   :config
+;;   (setq corfu-doc-delay 0.2
+;;         corfu-doc-max-width 80
+;;         corfu-doc-max-height 40)
+;;   :init
+;;   (corfu-doc-mode +1))
+
+(use-package! kind-icon
+  :after corfu
+  :custom
+  (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+(setq diary-file "~/Documents/org/diary")
+(diary)
+(add-hook 'diary-list-entries-hook 'diary-sort-entries t)
+
+(use-package! virtualenvwrapper)
+(after! virtualenvwrapper
+  (setq venv-location "~/.virtualenvs/"))
+
+(use-package! python-black
+  :after python
+  :hook (python-mode . python-black-on-save-mode-enable-dwim))
+
+(after! python
+  (add-to-list 'python-shell-completion-native-disabled-interpreters "python3"))
+
+;; Projectile project type - python + poetry + pytest
+(after! projectile
+  (projectile-register-project-type 'python-poetry '("poetry.lock")
+                                    :project-file "poetry.lock"
+                                    :compile "poetry build"
+                                    :test "poetry run pytest"
+                                    :test-dir "tests"
+                                    :test-prefix "test_"
+                                    :test-suffix "_test"))
+(use-package! company
+  :config
+  (add-hook 'inferior-python-mode-hook (lambda () (company-mode -1)) 'append)
+  ;; The append argument ensures that it's added to the hook after other functions
+  )
