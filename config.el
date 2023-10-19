@@ -1,4 +1,4 @@
- ;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
 (setq user-full-name "Shyam Kovuri"
       user-mail-address "shyam32@fastmail.net")
@@ -7,9 +7,7 @@
 ;; are the three important ones:
 ;;
 ;; + `doom-font'
-;; + `doom-variable-pitch-font'
-;; + `doom-big-font' -- used for `doom-big-font-mode'; use this for
-;;   presentations or streaming.
+;; + `doom-variable-pitch-font'+ `doom-big-font' -- used for `doom-big-font-mode'; use this for presentations or streaming.
 ;;
 (setq doom-font (font-spec :family "JetBrains Mono" :size 20)
       doom-big-font (font-spec :family "JetBrains Mono" :size 22)
@@ -96,18 +94,18 @@
    ([remap mark-sexp] . easy-mark)))
 
 (use-package! key-chord
-              :init
-              (key-chord-mode 1)
-              (setq key-chord-two-keys-delay 0.3)
-              (key-chord-define evil-normal-state-map "kj" 'evil-force-normal-state)
-              (key-chord-define evil-visual-state-map "kj" 'evil-change-to-previous-state)
-              (key-chord-define evil-insert-state-map "kj" 'evil-normal-state)
-              (key-chord-define evil-emacs-state-map "kj" 'evil-normal-state)
-              (key-chord-define evil-replace-state-map "kj" 'evil-normal-state)
-              (key-chord-define evil-motion-state-map "kj" 'evil-change-to-previous-state)
-              (key-chord-define evil-replace-state-map "kj" 'evil-change-to-previous-state)
-              (key-chord-define-global "df" 'execute-extended-command)
-              (key-chord-define minibuffer-local-map "kj" (kbd "C-g")))
+  :init
+  (key-chord-mode 1)
+  (setq key-chord-two-keys-delay 0.3)
+  (key-chord-define evil-normal-state-map "kj" 'evil-force-normal-state)
+  (key-chord-define evil-visual-state-map "kj" 'evil-change-to-previous-state)
+  (key-chord-define evil-insert-state-map "kj" 'evil-normal-state)
+  (key-chord-define evil-emacs-state-map "kj" 'evil-normal-state)
+  (key-chord-define evil-replace-state-map "kj" 'evil-normal-state)
+  (key-chord-define evil-motion-state-map "kj" 'evil-change-to-previous-state)
+  (key-chord-define evil-replace-state-map "kj" 'evil-change-to-previous-state)
+  (key-chord-define-global "df" 'execute-extended-command)
+  (key-chord-define minibuffer-local-map "kj" (kbd "C-g")))
 
 (use-package! evil-matchit
   :init
@@ -152,7 +150,7 @@
         org-superstar-headline-bullets-list '("▶" "◉" "○" "»")))
 
 (use-package! outshine
-              :commands (outshine-mode))
+  :commands (outshine-mode))
 
 (use-package! org-roam
   :config
@@ -192,8 +190,8 @@
 (use-package! dired-narrow
   :after dired
   :config
-    (map! :map dired-mode-map
-      :n  "/" 'dired-narrow-fuzzy))
+  (map! :map dired-mode-map
+        :n  "/" 'dired-narrow-fuzzy))
 
 (use-package! dired-open
   :after dired
@@ -252,33 +250,33 @@
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-keyword))
 
-(use-package! corfu
-  :bind (:map corfu-map
-              ("<escape>" . corfu-quit)
-              ("C-l" . corfu-insert)
-              ("C-j" . corfu-next)
-              ("C-k" . corfu-previous))
-  :config
-  (setq corfu-cycle t
-        corfu-auto t
-        corfu-auto-prefix 2
-        corfu-auto-delay 0.01
-        corfu-separator ?\s
-        corfu-quit-at-boundary nil
-        corfu-quit-no-match t
-        corfu-preview-current nil
-        corfu-preselect-first t
-        corfu-on-exact-match nil
-        corfu-echo-documentation t
-        corfu-scroll-margin 10)
-  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-  (evil-make-overriding-map corfu-map)
-  (map! :i "C-e" #'completion-at-point)
-  :init
-  (corfu-mode +1)
-  ;;(corfu-doc-mode +1)
-  )
+;; (use-package! corfu
+;;   :bind (:map corfu-map
+;;               ("<escape>" . corfu-quit)
+;;               ("C-l" . corfu-insert)
+;;               ("C-j" . corfu-next)
+;;               ("C-k" . corfu-previous))
+;;   :config
+;;   (setq corfu-cycle t
+;;         corfu-auto t
+;;         corfu-auto-prefix 2
+;;         corfu-auto-delay 0.01
+;;         corfu-separator ?\s
+;;         corfu-quit-at-boundary nil
+;;         corfu-quit-no-match t
+;;         corfu-preview-current nil
+;;         corfu-preselect-first t
+;;         corfu-on-exact-match nil
+;;         corfu-echo-documentation t
+;;         corfu-scroll-margin 10)
+;;   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+;;   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+;;   (evil-make-overriding-map corfu-map)
+;;   (map! :i "C-e" #'completion-at-point)
+;;   :init
+;;   (corfu-mode +1)
+;;   (corfu-doc-mode +1)
+;;   )
 
 (after! evil-org
   (map! (:map evil-org-mode-map
@@ -337,3 +335,17 @@
   (add-hook 'inferior-python-mode-hook (lambda () (company-mode -1)) 'append)
   ;; The append argument ensures that it's added to the hook after other functions
   )
+
+(setq envrc-direnv-executable "/usr/bin/direnv")
+;; config.el
+;;(use-package! clj2el)
+
+(use-package! obsidian
+  :demand t
+  :config
+  (obsidian-specify-path "~/Documents/notes")
+  (global-obsidian-mode t))
+
+(use-package! nerd-icons
+  :custom
+  (doom-modeline-major-mode-icon t))

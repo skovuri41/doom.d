@@ -5,12 +5,12 @@
   (isearch-exit)
   (goto-char isearch-other-end))
 (define-key isearch-mode-map [(control return)]
-  #'isearch-exit-other-end)
+            #'isearch-exit-other-end)
 ;; Activate occur easily inside isearch
 (define-key isearch-mode-map (kbd "C-o")
-  (lambda () (interactive)
-    (let ((case-fold-search isearch-case-fold-search))
-      (occur (if isearch-regexp isearch-string (regexp-quote isearch-string))))))
+            (lambda () (interactive)
+              (let ((case-fold-search isearch-case-fold-search))
+                (occur (if isearch-regexp isearch-string (regexp-quote isearch-string))))))
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "M-j") 'isearch-yank-word-or-char)
 
@@ -25,48 +25,47 @@
   :in "C-<return> c" #'user/eval-list-dwim
   :i "M-." #'cider-find-var))
 
-(after! lispy
-  (map! (:localleader
-         (:map (cider-repl-mode-map)
-          (:prefix ("r" . "repl")
-           "n" #'cider-repl-set-ns
-           "q" #'cider-quit
-           "r" #'cider-ns-refresh
-           "R" #'cider-restart
-           "t" #'toggle-nrepl-buffer
-           "l" #'doom/cider-clear-repl-buffer
-           "o" #'doom/cider-clear-repl-output
-           "b" #'cider-switch-to-last-clojure-buffer
-           "B" #'+clojure/cider-switch-to-repl-buffer-and-switch-ns
-           "c" #'cider-find-and-clear-repl-output))))
+(map! (:localleader
+       (:map (cider-repl-mode-map)
+             (:prefix ("z" . "repl2")
+                      "n" #'cider-repl-set-ns
+                      "q" #'cider-quit
+                      "r" #'cider-ns-refresh
+                      "R" #'cider-restart
+                      "t" #'toggle-nrepl-buffer
+                      "l" #'doom/cider-clear-repl-buffer
+                      "o" #'doom/cider-clear-repl-output
+                      "b" #'cider-switch-to-last-clojure-buffer
+                      "B" #'+clojure/cider-switch-to-repl-buffer-and-switch-ns
+                      "c" #'cider-find-and-clear-repl-output))))
 
-  (map! (:localleader
-         (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map cider-repl-mode-map)
-          (:prefix ("x" . "xtras")
-           "s" #'cider-selector))))
+(map! (:localleader
+       (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map cider-repl-mode-map)
+             (:prefix ("x" . "xtras")
+                      "s" #'cider-selector))))
 
-  (map! (:localleader
-         (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
-          (:prefix ("e" . "eval")
-           "." #'doom/cider-send-last-sexp-to-repl
-           "d" #'cider-eval-defun-or-region
-           "n" #'doom/cider-send-ns-form-to-repl)
-          (:prefix ("r" . "repl")
-           "t" #'toggle-nrepl-buffer
-           "l" #'doom/cider-clear-repl-buffer
-           "o" #'doom/cider-clear-repl-output)))))
+(map! (:localleader
+       (:map (clojure-mode-map clojurescript-mode-map clojurec-mode-map)
+             (:prefix ("e" . "eval")
+                      "." #'doom/cider-send-last-sexp-to-repl
+                      "d" #'cider-eval-defun-or-region
+                      "n" #'doom/cider-send-ns-form-to-repl)
+             (:prefix ("r" . "repl")
+                      "t" #'toggle-nrepl-buffer
+                      "l" #'doom/cider-clear-repl-buffer
+                      "o" #'doom/cider-clear-repl-output))))
 
 (map!
  (:map cider-inspector-mode-map
-  (:n "<tab>" #'cider-inspector-next-inspectable-object
-   :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
+       (:n "<tab>" #'cider-inspector-next-inspectable-object
+        :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
 
 (map!
  (:map lsp-ui-imenu-mode-map
-  (:n "l" #'lsp-ui-imenu--view
-   :n "<return>" #'lsp-ui-imenu--visit)))
+       (:n "l" #'lsp-ui-imenu--view
+        :n "<return>" #'lsp-ui-imenu--visit)))
 
-(evil-collection-define-key 'normal 'lsp-ui-imenu-mode-map
+(evil-define-key 'normal 'lsp-ui-imenu-mode-map
   (kbd "<return>") 'lsp-ui-imenu--visit
   (kbd "l") 'lsp-ui-imenu--view)
 
@@ -85,14 +84,14 @@
   (map! :nv "(" #'lispy-parens)
   (map! :nv "{" #'lispy-braces)
   (map! :nv "}" #'lispy-brackets)
-  (map! :nv "\"" #'lispy-quotes)
-  ;; (define-key xah-fly-key-map (kbd ";") 'lispy-comment)
-  )
+  (map! :nv "\"" #'lispy-quotes))
 
 (map! :nv "C-a"  #'evil-first-non-blank)
 (map! :nv "C-e"  #'evil-end-of-line)
 (map! :nv "t" #'evilmi-jump-items)
 (map! :nv "P" #'consult-yank-from-kill-ring)
+(map! :leader (:prefix "s"
+               :desc "consult-ripgrep" "g" #'consult-ripgrep))
 (map! :leader (:prefix "w"
                :desc "delete-other-windows" "o" #'delete-other-windows))
 (map! :leader (:prefix "b"
@@ -103,9 +102,9 @@
                :desc "dired-jump" "j" #'dired-jump))
 (map! :leader (:prefix "f"
                :desc "treemacs toggle" "t" #'+treemacs/toggle))
-(map! (:when (featurep! :ui treemacs)
-       "<f7>" #'+treemacs/toggle
-       "<C-f7>" #'treemacs-find-file))
+(map! (:when (modulep! :ui treemacs)
+        "<f7>" #'+treemacs/toggle
+        "<C-f7>" #'treemacs-find-file))
 (map! "<f8>" '(lambda () (interactive)
                 (if (org-roam-buffer-p (current-buffer))
                     (org-roam-buffer-toggle)

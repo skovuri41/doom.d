@@ -10,56 +10,56 @@
     (setq clojure-toplevel-inside-comment-form t)
 
     (define-clojure-indent
-      (defroutes 'defun)
-      (GET 2)
-      (POST 2)
-      (PUT 2)
-      (DELETE 2)
-      (HEAD 2)
-      (ANY 2)
-      (context 2)
-      (let-routes 1))
+     (defroutes 'defun)
+     (GET 2)
+     (POST 2)
+     (PUT 2)
+     (DELETE 2)
+     (HEAD 2)
+     (ANY 2)
+     (context 2)
+     (let-routes 1))
 
     (define-clojure-indent
-      (form-to 1))
+     (form-to 1))
 
     (define-clojure-indent
-      (match 1)
-      (are 2)
-      (checking 2)
-      (async 1))
+     (match 1)
+     (are 2)
+     (checking 2)
+     (async 1))
 
     (define-clojure-indent
-      (select 1)
-      (insert 1)
-      (update 1)
-      (delete 1))
+     (select 1)
+     (insert 1)
+     (update 1)
+     (delete 1))
 
     (define-clojure-indent
-      (run* 1)
-      (fresh 1))
+     (run* 1)
+     (fresh 1))
 
     (define-clojure-indent
-      (extend-freeze 2)
-      (extend-thaw 1))
+     (extend-freeze 2)
+     (extend-thaw 1))
 
     (define-clojure-indent
-      (go-loop 1))
+     (go-loop 1))
 
     (define-clojure-indent
-      (this-as 1)
-      (specify 1)
-      (specify! 1))
+     (this-as 1)
+     (specify 1)
+     (specify! 1))
 
     (define-clojure-indent
-      (s/fdef 1))
+     (s/fdef 1))
 
     (define-clojure-indent
-      (rf/reg-event-db 1)
-      (rf/reg-event-fx 1)
-      (rf/reg-sub 1)
-      (rf/reg-fx 1)
-      (rf/reg-cofx 1))
+     (rf/reg-event-db 1)
+     (rf/reg-event-fx 1)
+     (rf/reg-sub 1)
+     (rf/reg-fx 1)
+     (rf/reg-cofx 1))
 
     (setq clojure--prettify-symbols-alist
           '(("fn" . ?λ)
@@ -93,9 +93,9 @@
 
 
     (add-hook 'clojurescript-mode-hook
-              '(lambda ()
-                 (add-to-list 'imenu-generic-expression
-                              '("re-frame" "(reg-\\(event-fx\\|event-db\\|sub\\)[ \\|\n]*\\(:[^ \\|\n]*\\)" 2) t)))
+              #'(lambda ()
+                  (add-to-list 'imenu-generic-expression
+                               '("re-frame" "(reg-\\(event-fx\\|event-db\\|sub\\)[ \\|\n]*\\(:[^ \\|\n]*\\)" 2) t)))
 
     (after! all-the-icons
       (add-to-list 'all-the-icons-icon-alist
@@ -140,8 +140,8 @@
   (setq cider-repl-display-help-banner nil)
   (add-hook
    'cider-popup-buffer-mode-hook
-   '(lambda ()
-      (local-set-key "\C-g" 'cider-popup-buffer-quit)))
+   #'(lambda ()
+       (local-set-key "\C-g" 'cider-popup-buffer-quit)))
   (defun doom//cider-eval-in-repl-no-focus (form)
     "Insert FORM in the REPL buffer and eval it."
     (while (string-match "\\`[ \t\n\r]+\\|[ \t\n\r]+\\'" form)
