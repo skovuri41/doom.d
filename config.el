@@ -340,15 +340,10 @@
 ;; config.el
 ;;(use-package! clj2el)
 
-(use-package! obsidian
-  :demand t
-  :config
-  (obsidian-specify-path "~/Documents/notes")
-  (global-obsidian-mode t))
-
 (use-package! nerd-icons
   :custom
   (doom-modeline-major-mode-icon t))
+
 ;; ;; ;; ;; ;;
 ;; Obsidian ;;
 ;; ;; ;; ;; ;;
@@ -397,3 +392,162 @@
         :desc "snake_case" :nv "s" #'string-inflection-underscore
         :desc "Capital_Snake_Case" :nv "S" #'string-inflection-capital-underscore
         :desc "UP_CASE" :nv "u" #'string-inflection-upcase))
+
+;; (use-package! consult-omni
+;;   :after (consult consult-notes)
+;;   :custom
+;;   ;; General settings that apply to all sources
+;;   (consult-omni-show-preview t)   ;;; show previews
+;;   (consult-omni-preview-key "C-o") ;;; set the preview key to C-o
+;;   (consult-omni-default-browse-function 'browse-url)
+;;   (consult-omni-alternate-browse-function 'eww-browse-url)
+;;   (consult-omni-default-preview-function #'browse-url)
+;;   :config
+;;   ;; Load Sources Core code
+;;   (require 'consult-omni-sources)
+;;   ;; Load Embark Actions
+;;   (require 'consult-omni-embark)
+
+;;   ;; Either load all source modules or a selected list
+
+;; ;;; Select a list of modules you want to aload, otherwise all sources all laoded
+;;   (setq consult-omni-sources-modules-to-load (list 'consult-omni-apps
+;;                                                    'consult-omni-brave
+;;                                                    'consult-omni-brave-autosuggest
+;;                                                    'consult-omni-buffer
+;;                                                    'consult-omni-calc
+;;                                                    'consult-omni-consult-notes
+;;                                                    'consult-omni-dict
+;;                                                    'consult-omni-fd
+;;                                                    'consult-omni-find
+;;                                                    'consult-omni-gh
+;;                                                    'consult-omni-git-grep
+;;                                                    'consult-omni-gptel
+;;                                                    'consult-omni-grep
+;;                                                    'consult-omni-invidious
+;;                                                    'consult-omni-line-multi
+;;                                                    'consult-omni-locate
+;;                                                    'consult-omni-man
+;;                                                    'consult-omni-mu4e
+;;                                                    'consult-omni-numi
+;;                                                    'consult-omni-wkipedia
+;;                                                    'consult-omni-notes
+;;                                                    'consult-omni-ripgrep
+;;                                                    'consult-omni-ripgrep-all
+;;                                                    'consult-omni-stackoverflow
+;;                                                    'consult-omni-youtube))
+;;   (consult-omni-sources-load-modules)
+;; ;;; set multiple sources for consult-omni-multi command. Change these lists as needed for different interactive commands. Keep in mind that each source has to be a key in `consult-omni-sources-alist'.
+;;   (setq consult-omni-multi-sources '("calc"
+;;                                      ;; "File"
+;;                                      ;; "Buffer"
+;;                                      ;; "Bookmark"
+;;                                      "Apps"
+;;                                      ;; "gptel"
+;;                                      "Brave"
+;;                                      "Dictionary"
+;;                                      ;; "Google"
+;;                                      "Wikipedia"
+;;                                      ;; "elfeed"
+;;                                      ;; "mu4e"
+;;                                      ;; "buffers text search"
+;;                                      "Notes Search"
+;;                                      ;; "Org Agenda"
+;;                                      "GitHub"
+;;                                      ;; "YouTube"
+;;                                      "Invidious"))
+
+;;   ;; Per source customization
+
+;; ;;; Set API KEYs. It is recommended to use a function that returns the string for better security.
+;;   (setq consult-omni-google-customsearch-key
+;;         (secrets-get-secret "Login" "Password for 'YOUTUBE_V3_API_KEY' on 'apikey'"))
+;;   ;; (setq consult-omni-google-customsearch-key "YOUR-GOOGLE-API-KEY-OR-FUNCTION")
+;;   ;; (setq consult-omni-google-customsearch-cx "YOUR-GOOGLE-CX-NUMBER-OR-FUNCTION")
+;;   (setq consult-omni-brave-api-key (secrets-get-secret "Login" "Password for 'BRAVE_SEARCH_API_KEY' on 'apikey'"))
+;;   (setq consult-omni-brave-autosuggest-api-key
+;;         (secrets-get-secret "Login" "Password for 'BRAVE_AUTOSUGGEST_API_KEY' on 'apikey'"))
+;;   (setq consult-omni-stackexchange-api-key
+;;         (secrets-get-secret "Login" "Password for 'STACKEXCHANGE_API_KEY' on 'apikey'"))
+;;   ;; (setq consult-omni-pubmed-api-key "YOUR-PUBMED-API-KEY-OR-FUNCTION")
+;;   (setq consult-omni-openai-api-key
+;;         (secrets-get-secret "Login" "Password for 'OPENAI_API_KEY' on 'apikey'"))
+
+;; ;;; Pick you favorite autosuggest command.
+;;   (setq consult-omni-default-autosuggest-command #'consult-omni-dynamic-brave-autosuggest) ;;or any other autosuggest source you define
+
+;; ;;; Set your shorthand favorite interactive command
+;;   (setq consult-omni-default-interactive-command #'consult-omni-multi))
+
+(use-package! consult-omni
+  :after consult
+  :custom
+  ;; General settings that apply to all sources
+  (consult-omni-show-preview t) ;;; show previews
+  (consult-omni-preview-key "C-o") ;;; set the preview key to C-o
+  :config
+  ;; Load Sources Core code
+  (require 'consult-omni-sources)
+  ;; Load Embark Actions
+  (require 'consult-omni-embark)
+
+  ;; Either load all source modules or a selected list
+
+  ;;; Select a list of modules you want to aload, otherwise all sources all laoded
+                                        ; (setq consult-omni-sources-modules-to-load (list 'consult-omni-wkipedia 'consult-omni-notes))
+  (consult-omni-sources-load-modules)
+  ;;; set multiple sources for consult-omni-multi command. Change these lists as needed for different interactive commands. Keep in mind that each source has to be a key in `consult-omni-sources-alist'.
+  (setq consult-omni-multi-sources '("calc"
+                                     ;; "File"
+                                     ;; "Buffer"
+                                     ;; "Bookmark"
+                                     "Apps"
+                                     ;; "gptel"
+                                     "Brave"
+                                     "Dictionary"
+                                     ;; "Google"
+                                     "Wikipedia"
+                                     "elfeed"
+                                     ;; "mu4e"
+                                     ;; "buffers text search"
+                                     "Notes Search"
+                                     "Org Agenda"
+                                     "GitHub"
+                                     ;; "YouTube"
+                                     "Invidious"))
+
+  ;; Per source customization
+
+  ;;; Set API KEYs. It is recommended to use a function that returns the string for better security.
+  (setq consult-omni-google-customsearch-key "YOUR-GOOGLE-API-KEY-OR-FUNCTION")
+  (setq consult-omni-google-customsearch-cx "YOUR-GOOGLE-CX-NUMBER-OR-FUNCTION")
+  (setq consult-omni-brave-api-key "YOUR-BRAVE-API-KEY-OR-FUNCTION")
+  (setq consult-omni-stackexchange-api-key "YOUR-STACKEXCHANGE-API-KEY-OR-FUNCTION")
+  (setq consult-omni-pubmed-api-key "YOUR-PUBMED-API-KEY-OR-FUNCTION")
+  (setq consult-omni-openai-api-key "YOUR-OPENAI-API-KEY-OR-FUNCTION")
+
+;;; Pick you favorite autosuggest command.
+  (setq consult-omni-default-autosuggest-command #'consult-omni-dynamic-brave-autosuggest) ;;or any other autosuggest source you define
+
+ ;;; Set your shorthand favorite interactive command
+  (setq consult-omni-default-interactive-command #'consult-omni-multi))
+
+(use-package! gptel
+  :config
+  (setq gptel-expert-commands t)
+  (add-hook 'gptel-post-stream-hook 'gptel-auto-scroll)
+  (setq gptel-backend
+        (gptel-make-openai "Perplexity"
+          :host "api.perplexity.ai"
+          :key "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"
+          :endpoint "/chat/completions"
+          :stream t
+          :models '(
+                    "llama-3.1-sonar-small-128k-chat"
+                    "llama-3.1-sonar-large-128k-chat"
+                    "llama-3.1-sonar-huge-128k-online"
+                    "llama-3.1-sonar-small-128k-online"
+                    "llama-3.1-sonar-large-128k-online"
+                    "llama-3.1-8b-instruct"
+                    "llama-3.1-70b-instruct"))))
+

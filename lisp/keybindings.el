@@ -65,9 +65,9 @@
        (:n "l" #'lsp-ui-imenu--view
         :n "<return>" #'lsp-ui-imenu--visit)))
 
-(evil-define-key 'normal 'lsp-ui-imenu-mode-map
-  (kbd "<return>") 'lsp-ui-imenu--visit
-  (kbd "l") 'lsp-ui-imenu--view)
+;; (evil-define-key 'normal 'lsp-ui-imenu-mode-map
+;;   (kbd "<return>") 'lsp-ui-imenu--visit
+;;   (kbd "l") 'lsp-ui-imenu--view)
 
 (after! lispy
   (setq lispy-safe-copy t
@@ -88,8 +88,15 @@
 
 (map! :nv "C-a"  #'evil-first-non-blank)
 (map! :nv "C-e"  #'evil-end-of-line)
+(map! :nv "C-i" #'better-jumper-jump-forward)
+(map! :nv "C-o" #'better-jumper-jump-backward)
+(map! :nv "C-'" #'better-jumper-set-jump)
+(define-key input-decode-map [?\C-i] [C-i])
+(global-set-key (kbd "<C-i>") #'better-jumper-jump-forward)
 (map! :nv "t" #'evilmi-jump-items)
 (map! :nv "P" #'consult-yank-from-kill-ring)
+(map! :leader (:prefix "h"
+               :desc "gptel-quick" "h" #'gptel-quick))
 (map! :leader (:prefix "s"
                :desc "consult-ripgrep" "g" #'consult-ripgrep))
 (map! :leader (:prefix "w"
@@ -103,21 +110,22 @@
 (map! :leader (:prefix "f"
                :desc "treemacs toggle" "t" #'+treemacs/toggle))
 (map! (:when (modulep! :ui treemacs)
-        "<f7>" #'+treemacs/toggle
-        "<C-f7>" #'treemacs-find-file))
-(map! "<f8>" '(lambda () (interactive)
+        "<f6>" #'+treemacs/toggle
+        "<C-f6>" #'treemacs-find-file))
+(map! "<f9>" '(lambda () (interactive)
                 (if (org-roam-buffer-p (current-buffer))
                     (org-roam-buffer-toggle)
                   (imenu-lsp-ui-smart-toggle))))
+(map! :nv "gl"  #'org-down-element)
 (map! :nv "g]"  #'lispyville-forward-list)
 (map! :nv "g["  #'lispyville-backward-list-begin)
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
-(bind-key "<f11>" #'xah-previous-user-buffer)
+(bind-key "<f7>" #'xah-previous-user-buffer)
 ;; (bind-key "<f11>" #'better-jumper-jump-backward)
 (bind-key "<M-f11>" #'evil-prev-buffer)
-(bind-key "<f12>" #'xah-next-user-buffer)
+(bind-key "<f8>" #'xah-next-user-buffer)
 ;; (bind-key "<f12>" #'better-jumper-jump-forward)
 (bind-key "<M-f12>" #'evil-next-buffer)
 (bind-key "<C-f11>" #'centaur-tabs-backward)
