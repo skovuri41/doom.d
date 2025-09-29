@@ -74,6 +74,7 @@
 (package! jet)
 (package! obsidian)
 (package! desktop-environment)
-(package! consult-omni
-  :recipe (:host github :repo "armindarvish/consult-omni" :files (:defaults "sources/*.el")))
 (package! gptel)
+(package! org-superstar)
+(package! ox-tailwind
+  :recipe (:host github :repo "vascoferreira25/ox-tailwind"))
