@@ -352,3 +352,4 @@
         :desc "snake_case" :nv "s" #'string-inflection-underscore
         :desc "Capital_Snake_Case" :nv "S" #'string-inflection-capital-underscore
         :desc "UP_CASE" :nv "u" #'string-inflection-upcase))
+
