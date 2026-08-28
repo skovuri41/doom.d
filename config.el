@@ -9,12 +9,14 @@
 ;; + `doom-font'
 ;; + `doom-variable-pitch-font'+ `doom-big-font' -- used for `doom-big-font-mode'; use this for presentations or streaming.
 ;;
-(setq doom-font (font-spec :family "JetBrains Mono" :size 12)
-      doom-big-font (font-spec :family "JetBrains Mono" :size 14)
-      doom-variable-pitch-font (font-spec :family "Overpass" :size 12)
-      doom-unicode-font (font-spec :family "JuliaMono")
-      ;; doom-serif-font (font-spec :family "IBM Plex Mono" :weight 'light)
-      )
+;; (setq doom-font (font-spec :family "JetBrains Mono" :size 19)
+;;       doom-big-font (font-spec :family "JetBrains Mono" :size 23)
+;;       doom-variable-pitch-font (font-spec :family "Overpass" :size 19)
+;;       doom-unicode-font (font-spec :family "JuliaMono"))
+
+(setq doom-font (font-spec :family "Monospace" :size 11.0)
+      doom-big-font (font-spec :family "Monospace" :size 15.0))
+
 (defvar required-fonts '("JetBrains.*" "Overpass" "JuliaMono" "IBM Plex Mono" "Alegreya"))
 
 (defvar available-fonts
@@ -70,11 +72,6 @@
                                 ("Asia/Tokyo" "Tokyo")
                                 ("Australia/Melbourne" "Melbourne")
                                 ("America/Los_Angeles" "San Franscisco")))
-
-(setq ditaa-jar-path (expand-file-name "extra/ditaa0_9.jar" doom-private-dir))
-(setq org-ditaa-jar-path (expand-file-name "extra/ditaa0_9.jar" doom-private-dir))
-(setq plantuml-jar-path (expand-file-name "extra/plantuml.jar" doom-private-dir))
-(setq org-plantuml-jar-path (expand-file-name "extra/plantuml.jar" doom-private-dir))
 
 (setq which-key-idle-delay 0.5)
 (setq which-key-allow-multiple-replacements t)
