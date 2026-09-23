@@ -1,3 +1,7 @@
+;;; lisp/clojure.el -*- lexical-binding: t; -*-
+
+;;; Clojure Mode
+
 (use-package clojure-mode
   :init
   (add-to-list 'auto-mode-alist '("\\.bb\\'" . clojure-mode))
@@ -129,8 +133,9 @@
         (cider-interactive-eval
          (concat "(nextjournal.clerk/show! \"" filename "\")")))))
 
-  ;; (define-key clojure-mode-map (kbd "<M-return>") 'clerk-show)
   )
+
+;;; CIDER
 
 (use-package! cider
   :init
@@ -279,3 +284,9 @@ the focus."
         (cider-switch-to-repl-buffer)
         (cider-repl-clear-output)
         (cider-switch-to-last-clojure-buffer)))))
+
+(after! cider
+  (set-popup-rules!
+    '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
+      ("^\\*cider-repl.*\\*" :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
+      ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))

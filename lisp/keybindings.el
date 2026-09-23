@@ -1,4 +1,7 @@
 ;;; lisp/keybindings.el -*- lexical-binding: t; -*-
+
+;;; Isearch
+
 (defun isearch-exit-other-end ()
   "Exit isearch, at the opposite end of the string."
   (interactive)
@@ -14,7 +17,7 @@
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "M-j") 'isearch-yank-word-or-char)
 
-
+;;; Clojure / CIDER
 
 (map!
  (:mode (clojure-mode clojurec-mode clojurescript-mode)
@@ -60,14 +63,14 @@
        (:n "<tab>" #'cider-inspector-next-inspectable-object
         :n "S-<tab>" #'cider-inspector-previous-inspectable-object)))
 
+;;; LSP UI
+
 (map!
  (:map lsp-ui-imenu-mode-map
        (:n "l" #'lsp-ui-imenu--view
         :n "<return>" #'lsp-ui-imenu--visit)))
 
-;; (evil-define-key 'normal 'lsp-ui-imenu-mode-map
-;;   (kbd "<return>") 'lsp-ui-imenu--visit
-;;   (kbd "l") 'lsp-ui-imenu--view)
+;;; Lispy
 
 (after! lispy
   (setq lispy-safe-copy t
@@ -86,6 +89,8 @@
   (map! :nv "}" #'lispy-brackets)
   (map! :nv "\"" #'lispy-quotes))
 
+;;; Movement & Editing
+
 (map! :nv "C-a"  #'evil-first-non-blank)
 (map! :nv "C-e"  #'evil-end-of-line)
 (map! :nv "C-i" #'better-jumper-jump-forward)
@@ -95,6 +100,12 @@
 (global-set-key (kbd "<C-i>") #'better-jumper-jump-forward)
 (map! :nv "t" #'evilmi-jump-items)
 (map! :nv "P" #'consult-yank-from-kill-ring)
+(map! :nv "gl"  #'org-down-element)
+(map! :nv "g]"  #'lispyville-forward-list)
+(map! :nv "g["  #'lispyville-backward-list-begin)
+
+;;; Leader Bindings
+
 (map! :leader (:prefix "h"
                :desc "gptel-quick" "h" #'gptel-quick))
 (map! :leader (:prefix "s"
@@ -116,24 +127,25 @@
                   (if (org-roam-buffer-p (current-buffer))
                       (org-roam-buffer-toggle)
                     (imenu-lsp-ui-smart-toggle))))
-(map! :nv "gl"  #'org-down-element)
-(map! :nv "g]"  #'lispyville-forward-list)
-(map! :nv "g["  #'lispyville-backward-list-begin)
+
+;;; Org
+
 (map! :map org-mode-map
       "M-n" #'outline-next-visible-heading
       "M-p" #'outline-previous-visible-heading)
+
+;;; Buffer & Tab Navigation
+
 (bind-key "<f7>" #'xah-previous-user-buffer)
-;; (bind-key "<f11>" #'better-jumper-jump-backward)
 (bind-key "<M-f11>" #'evil-prev-buffer)
 (bind-key "<f8>" #'xah-next-user-buffer)
-;; (bind-key "<f12>" #'better-jumper-jump-forward)
 (bind-key "<M-f12>" #'evil-next-buffer)
 (bind-key "<C-f11>" #'centaur-tabs-backward)
 (bind-key "<C-f12>" #'centaur-tabs-forward)
 
-;;;;;; aliases
+;;; Command Aliases
 
-;; make frequently used commands short
+;; Make frequently used commands short
 (defalias 'qrr 'query-replace-regexp)
 (defalias 'lml 'list-matching-lines)
 (defalias 'dml 'delete-matching-lines)
@@ -143,7 +155,6 @@
 (defalias 'rr 'reverse-region)
 (defalias 'rs 'replace-string)
 (defalias 'dup 'duplicate-thing)
-;; (defalias 'max 'maximize-frame)
 
 (defalias 'g 'grep)
 (defalias 'gf 'grep-find)
@@ -161,19 +172,22 @@
 (defalias 'wtime 'display-time-world)
 (defalias 'of 'other-frame)
 
-;; Macro
+;;;; Macros
+
 (defalias 'ms 'start-kbd-macro)
 (defalias 'me 'end-kbd-macro)
 (defalias 'ml 'call-last-kbd-macro)
 
-;; ; elisp
+;;;; Elisp
+
 (defalias 'eb 'eval-buffer)
 (defalias 'er 'eval-region)
 (defalias 'ed 'eval-defun)
 (defalias 'eis 'elisp-index-search)
 (defalias 'lf 'load-file)
 
-;; ; major modes
+;;;; Major Modes
+
 (defalias 'hm 'html-mode)
 (defalias 'tm 'text-mode)
 (defalias 'elm 'emacs-lisp-mode)
@@ -196,13 +210,18 @@
 (defalias 'pfd 'projectile-find-dir)
 (defalias 'psp 'projectile-switch-project)
 
-;; ;pretty print
+;;;; Pretty Print
+
 (defalias 'ppx 'pretty-print-xml-region)
 (defalias 'ppj 'json-pretty-print)
-;; org mode
+
+;;;; Org
+
 (defalias 'oih 'org-insert-heading)
 (defalias 'clip 'org-cliplink)
 (defalias 'link 'ar/org-insert-link-dwim)
 
-(set-register ?i '(file . "~/.doom.d/init.el"))
-(set-register ?c '(file . "~/.doom.d/config.el"))
+;;; Registers
+
+(set-register ?i '(file . "~/.config/doom/init.el"))
+(set-register ?c '(file . "~/.config/doom/config.el"))

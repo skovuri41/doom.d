@@ -1,68 +1,25 @@
 ;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;;; Identity
+
 (setq user-full-name "Shyam Kovuri"
       user-mail-address "shyam32@fastmail.net")
 
-;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
-;; are the three important ones:
-;;
-;; + `doom-font'
-;; + `doom-variable-pitch-font'+ `doom-big-font' -- used for `doom-big-font-mode'; use this for presentations or streaming.
-;;
-;; (setq doom-font (font-spec :family "JetBrains Mono" :size 19)
-;;       doom-big-font (font-spec :family "JetBrains Mono" :size 23)
-;;       doom-variable-pitch-font (font-spec :family "Overpass" :size 19)
-;;       doom-unicode-font (font-spec :family "JuliaMono"))
+;;; Fonts
 
 (setq doom-font (font-spec :family "Monospace" :size 11.0)
       doom-big-font (font-spec :family "Monospace" :size 15.0))
 
-;; (defvar required-fonts '("JetBrains.*" "Overpass" "JuliaMono" "IBM Plex Mono" "Alegreya"))
-
-;; (defvar available-fonts
-;;   (delete-dups (or (font-family-list)
-;;                    (split-string (shell-command-to-string "fc-list : family")
-;;                                  "[,\n]"))))
-
-;; (defvar missing-fonts
-;;   (delq nil (mapcar
-;;              (lambda (font)
-;;                (unless (delq nil (mapcar (lambda (f)
-;;                                            (string-match-p (format "^%s$" font) f))
-;;                                          available-fonts))
-;;                  font))
-;;              required-fonts)))
+;;; UI
 
 (setq fancy-splash-image (concat doom-private-dir "splash.png"))
 (setq save-interprogram-paste-before-kill t)
 (setq doom-theme 'doom-one)
-;; Revert buffers when the underlying file has changed
-(global-auto-revert-mode 1)
-;; Revert Dired and other buffers
-(setq global-auto-revert-non-file-buffers t)
-(setq org-directory "~/Documents/org/")
-(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-(add-to-list 'auto-mode-alist '("\\.txt$" . org-mode))
-(add-to-list 'auto-mode-alist '(".*/[0-9]*$" . org-mode))
-
 (setq display-line-numbers-type t)
 
-;; Here are some additional functions/macros that could help you configure Doom:
-;;
-;; - `load!' for loading external *.el files relative to this one
-;; - `use-package!' for configuring packages
-;; - `after!' for running code after a package has loaded
-;; - `add-load-path!' for adding directories to the `load-path', relative to
-;;   this file. Emacs searches the `load-path' when you load packages with
-;;   `require' or `use-package'.
-;; - `map!' for binding new keys
-;;
-;; To get information about any of these functions/macros, move the cursor over
-;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
-;; This will open documentation for it, including demos of how they are used.
-;;
-;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
-;; they are implemented.
+;; Revert buffers (including Dired) when the underlying file changes on disk
+(global-auto-revert-mode 1)
+(setq global-auto-revert-non-file-buffers t)
 
 (setq display-time-world-list '(("America/New_York" "New York")
                                 ("Europe/London" "London")
@@ -73,17 +30,79 @@
                                 ("Australia/Melbourne" "Melbourne")
                                 ("America/Los_Angeles" "San Franscisco")))
 
+;;; File-type Associations
+
+(setq org-directory "~/Documents/org/")
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(add-to-list 'auto-mode-alist '("\\.txt$" . org-mode))
+(add-to-list 'auto-mode-alist '(".*/[0-9]*$" . org-mode)) ;; Journal entries
+
+;;; History & Session Persistence
+
+;; Doom already enables `savehist-mode' (kill-ring, register-alist,
+;; search-ring, regexp-search-ring, plus every minibuffer history - M-x,
+;; find-file, etc. - via `savehist-save-minibuffer-history'). By default it
+;; only writes `savehist-file' on a clean exit (`savehist-autosave-interval'
+;; is nil), so a crash, `kill -9', or a Doom/package error mid-session loses
+;; everything back to the last graceful quit.
+(after! savehist
+  (setq savehist-autosave-interval 180) ; autosave every 3 minutes too
+  (setq history-length 500) ; default 100; deeper M-x/consult history
+
+  ;; `search-ring'/`regexp-search-ring' are already saved by Doom, but
+  ;; `search-ring-max'/`regexp-search-ring-max' default to 16, so only the
+  ;; last 16 isearches ever exist to persist in the first place - raise the
+  ;; cap so the persistence Doom already set up is actually worth something.
+  (setq search-ring-max 100)
+  (setq regexp-search-ring-max 100)
+
+  ;; `compile-command' and `last-kbd-macro' are plain strings/vectors (safe
+  ;; to print+read) and aren't minibuffer histories, so they need to be
+  ;; listed explicitly to survive a restart. `compile-history' technically
+  ;; IS a minibuffer history (so `savehist-save-minibuffer-history' picks it
+  ;; up automatically) but only for sessions that actually ran `M-x compile'
+  ;; - listing it explicitly means it still round-trips on sessions that
+  ;; didn't, instead of quietly falling out of the save file.
+  (add-to-list 'savehist-additional-variables 'compile-command)
+  (add-to-list 'savehist-additional-variables 'compile-history)
+  (add-to-list 'savehist-additional-variables 'last-kbd-macro)
+
+  ;; Deliberately NOT added:
+  ;; - `mark-ring'/`global-mark-ring': hold markers, which print but can't
+  ;;   be read back into anything useful.
+  ;; - `kmacro-ring': holds oclosures (Emacs 31's macro objects), which
+  ;;   don't round-trip through the Lisp reader either - `last-kbd-macro'
+  ;;   above is the safe equivalent (last macro only, but actually works).
+  ;; - `dabbrev--last-table': an internal expansion-cycling cache tied to a
+  ;;   live buffer object (`dabbrev--last-buffer'), not a real history.
+  ;; - `log-edit-comment-ring': Magit's git-commit buffers make this
+  ;;   buffer-local per repo (see git-commit.el), so savehist would only
+  ;;   ever see the empty global default - Magit's actual per-repo message
+  ;;   rings live in `magit-repository-local-cache', which isn't disk
+  ;;   persisted by Magit either and isn't safe to bulk-persist (it also
+  ;;   caches other, non-printable Magit state).
+  )
+
+;;; Which-Key
+
 (setq which-key-idle-delay 0.5)
 (setq which-key-allow-multiple-replacements t)
+(setq which-key-use-C-h-commands t)
+(setq which-key-side-window-max-height 0.3)
 (after! which-key
   (pushnew!
    which-key-replacement-alist
    '(("" . "\\`+?evil[-:]?\\(?:a-\\)?\\(.*\\)") . (nil . "◂\\1"))
    '(("\\`g s" . "\\`evilem--?motion-\\(.*\\)") . (nil . "◃\\1"))))
 
+;;; Local Lisp
+
 (load! "lisp/clojure.el")
 (load! "lisp/defuns.el")
 (load! "lisp/keybindings.el")
+(load! "lisp/emacs-float.el")
+
+;;; Editing Enhancements
 
 (use-package! easy-kill
   :bind*
@@ -122,11 +141,34 @@
      beacon-blink-duration 0.6)
     (beacon-mode 1)))
 
+(use-package! string-inflection
+  :commands (string-inflection-all-cycle
+             string-inflection-toggle
+             string-inflection-java-style-cycle
+             string-inflection-python-style-cycle
+             string-inflection-elixir-style-cycle
+             string-inflection-ruby-style-cycle
+             string-inflection-camelcase
+             string-inflection-lower-camelcase
+             string-inflection-underscore
+             string-inflection-capital-underscore
+             string-inflection-upcase
+             string-inflection-kebab-case)
+  :init
+  (map! :prefix ("g SPC" . "Convert case")
+        :desc "cycle" :nv "n" #'string-inflection-all-cycle
+        :desc "toggle" :nv "t" #'string-inflection-toggle
+        :desc "PascalCase" :nv "p" #'string-inflection-camelcase
+        :desc "camelCase" :nv "c" #'string-inflection-lower-camelcase
+        :desc "kebab-case" :nv "k" #'string-inflection-kebab-case
+        :desc "snake_case" :nv "s" #'string-inflection-underscore
+        :desc "Capital_Snake_Case" :nv "S" #'string-inflection-capital-underscore
+        :desc "UP_CASE" :nv "u" #'string-inflection-upcase))
+
+;;; Org & Calendar
+
 (after! org
   (add-hook 'org-mode-hook (lambda () (org-autolist-mode)))
-  (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-  (add-to-list 'auto-mode-alist '("\\.txt$" . org-mode))
-  (add-to-list 'auto-mode-alist '(".*/[0-9]*$" . org-mode)) ;; Journal entries
   (add-hook 'org-mode-hook #'hl-line-mode)
   (setq org-file-apps
         '((auto-mode . emacs)
@@ -138,7 +180,6 @@
           ("\\.pdf::\\([0-9]+\\)?\\'" . "zathura %s -P %1")
           ("\\.pdf\\'" . "zathura %s")))
   (setq org-ctrl-k-protect-subtree t))
-
 
 (use-package! org-superstar
   :init
@@ -174,8 +215,61 @@
            :file-name "daily/%<%Y-%m-%d>.org"
            :head "#+title: %<%Y-%m-%d>\n\n"))))
 
+(setq diary-file "~/Documents/org/diary")
+(diary)
+(add-hook 'diary-list-entries-hook 'diary-sort-entries t)
+
+(after! evil-org
+  (map! (:map evil-org-mode-map
+         :i "C-j" nil
+         :i "C-k" nil
+         :i "C-;" nil
+         :i "C-l" nil
+         :i "<return>" nil
+         :i "RET" nil)))
+
+;;; Snippets
+
+;; Doom's `:editor snippets' module (already enabled) wires up yasnippet with
+;; its own private dir at $DOOMDIR/snippets/ - fine for generic, shareable
+;; templates since this whole directory is tracked in git. Personal/sensitive
+;; snippets (address, signature, etc.) go under `org-directory' instead,
+;; which isn't a git repo and never reaches a remote.
+(after! yasnippet
+  (add-to-list 'yas-snippet-dirs (concat org-directory "snippets/") t))
+
+;;; Historical-Text Expansion (M-/)
+
+(use-package! hippie-exp
+  :bind ([remap dabbrev-expand] . hippie-expand)
+  :config
+  (setq hippie-expand-try-functions-list
+        ;; yas-hippie-try-expand goes first: it only fires on an exact
+        ;; snippet-key match and safely no-ops otherwise, so a deliberate
+        ;; trigger like "sig" always wins over an incidental dabbrev match
+        ;; from some other open buffer (e.g. a word starting with "sig...").
+        '(yas-hippie-try-expand             ; your snippets (tdate, sig, ...)
+          try-expand-dabbrev-from-kill      ; recently killed/copied text
+          try-expand-dabbrev                ; current buffer
+          try-expand-dabbrev-all-buffers    ; other open buffers
+          try-expand-line
+          try-expand-list
+          try-complete-file-name-partially
+          try-complete-file-name
+          try-expand-all-abbrevs
+          try-complete-lisp-symbol-partially
+          try-complete-lisp-symbol)))
+
+;;; Consult History
+
+;; Scoped to the minibuffer only - a global "M-r" would clobber the default
+;; `move-to-window-line-top-bottom' in every other buffer.
+(map! :map minibuffer-local-map
+      "M-r" #'consult-history)
+
+;;; Dired
+
 (after! dired
-  ;; (add-hook! 'dired-mode-hook 'dired-hide-details-mode)
   (add-hook! 'dired-mode-hook 'hl-line-mode)
   (setq ls-lisp-dirs-first t)
   (put 'dired-find-alternate-file 'disabled nil)
@@ -205,6 +299,8 @@
           ("pdf" . "zathura")))
   (setq dired-open-extensions open-extensions))
 
+;;; Eval Tooling
+
 (use-package! eval-sexp-fu
   :hook ((lisp-mode emacs-lisp-mode eshell-mode) . +eval-sexp-fu--init)
   :custom-face
@@ -214,23 +310,20 @@
   (defun +eval-sexp-fu--init ()
     (require 'eval-sexp-fu)))
 
-(after! cider
-  (set-popup-rules!
-    '(("^\\*cider-inspect\\*" :side right :width 0.39 :height 0.5 :select t :slot 10 :vslot 0)
-      ("^\\*cider-repl.*\\*" :side right :width 0.39 :height 0.5 :select f :slot 0 :vslot 0 :quit nil)
-      ("^\\*cider-error.*\\*" :side right :width 0.39 :height 0.5 :select t :slot 1 :vslot 0))))
-
 (add-hook 'emacs-lisp-mode-hook #'aggressive-indent-mode)
+
+;;; LSP
 
 (after! lsp
   (setq lsp-ui-imenu-auto-refresh t))
 
-(setq which-key-use-C-h-commands t)
-(setq which-key-side-window-max-height 0.3)
+;;; Eshell
 
 (require 'em-alias)
 (require 'eshell)
 (eshell/alias "0" "(eshell/cd (suggest-project-root))")
+
+;;; Completion
 
 (use-package! cape
   :config
@@ -247,15 +340,6 @@
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-keyword))
 
-(after! evil-org
-  (map! (:map evil-org-mode-map
-         :i "C-j" nil
-         :i "C-k" nil
-         :i "C-;" nil
-         :i "C-l" nil
-         :i "<return>" nil
-         :i "RET" nil)))
-
 (use-package! kind-icon
   :after corfu
   :custom
@@ -263,9 +347,14 @@
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
-(setq diary-file "~/Documents/org/diary")
-(diary)
-(add-hook 'diary-list-entries-hook 'diary-sort-entries t)
+;; Rank completion candidates by how recently/often they were picked, and
+;; persist that ranking via savehist (`corfu-history' registers itself into
+;; `savehist-minibuffer-history-variables' the first time it's used).
+(after! corfu
+  (require 'corfu-history)
+  (corfu-history-mode 1))
+
+;;; Python
 
 (use-package! virtualenvwrapper)
 (after! virtualenvwrapper
@@ -287,70 +376,36 @@
                                     :test-dir "tests"
                                     :test-prefix "test_"
                                     :test-suffix "_test"))
+
 (use-package! company
   :config
-  (add-hook 'inferior-python-mode-hook (lambda () (company-mode -1)) 'append)
-  ;; The append argument ensures that it's added to the hook after other functions
-  )
+  ;; 'append ensures this runs after other inferior-python-mode-hook functions
+  (add-hook 'inferior-python-mode-hook (lambda () (company-mode -1)) 'append))
 
 (setq envrc-direnv-executable "/usr/bin/direnv")
-;; config.el
-;;(use-package! clj2el)
+
+;;; Icons
 
 (use-package! nerd-icons
   :custom
   (doom-modeline-major-mode-icon t))
 
-;; ;; ;; ;; ;;
-;; Obsidian ;;
-;; ;; ;; ;; ;;
+;;; Obsidian
 
 (use-package! obsidian
   :config
   (obsidian-specify-path "~/Documents/notes")
   (global-obsidian-mode t)
   :custom
-  ;; This directory will be used for `obsidian-capture' if set.
-  (obsidian-inbox-directory "inbox")
+  (obsidian-inbox-directory "inbox") ;; used by `obsidian-capture'
   :bind (:map obsidian-mode-map
-              ;; Replace C-c C-o with Obsidian.el's implementation. It's ok to use another key binding.
               ("C-c C-o" . obsidian-follow-link-at-point)
-              ;; Jump to backlinks
               ("C-c C-b" . obsidian-backlink-jump)
-              ;; If you prefer you can use `obsidian-insert-link'
               ("C-c C-l" . obsidian-insert-wikilink)
-              ;; Open the Obsidian hydra
               ("C-c M-o" . obsidian-hydra/body)))
 
-;; -- String inflection: underscore -> UPCASE -> CamelCase conversion of names
-;; https://github.com/akicho8/string-inflection
+;;; Wayland / Hyprland Integration
 
-(use-package! string-inflection
-  :commands (string-inflection-all-cycle
-             string-inflection-toggle
-             string-inflection-java-style-cycle
-             string-inflection-python-style-cycle
-             string-inflection-elixir-style-cycle
-             string-inflection-ruby-style-cycle
-             string-inflection-camelcase
-             string-inflection-lower-camelcase
-             string-inflection-underscore
-             string-inflection-capital-underscore
-             string-inflection-upcase
-             string-inflection-kebab-case)
-
-  :init
-  (map! :prefix ("g SPC" . "Convert case")
-        :desc "cycle" :nv "n" #'string-inflection-all-cycle
-        :desc "toggle" :nv "t" #'string-inflection-toggle
-        :desc "PascalCase" :nv "p" #'string-inflection-camelcase
-        :desc "camelCase" :nv "c" #'string-inflection-lower-camelcase
-        :desc "kebab-case" :nv "k" #'string-inflection-kebab-case
-        :desc "snake_case" :nv "s" #'string-inflection-underscore
-        :desc "Capital_Snake_Case" :nv "S" #'string-inflection-capital-underscore
-        :desc "UP_CASE" :nv "u" #'string-inflection-upcase))
-
-;; (string= (getenv "XDG_SESSION_TYPE") "wayland")
 (when (and (executable-find "wl-copy")
            (executable-find "wl-paste"))
   (defun my-wl-copy (text)
@@ -368,48 +423,22 @@
   (setq interprogram-cut-function 'my-wl-copy)
   (setq interprogram-paste-function 'my-wl-paste))
 
+;;; Secrets & Auth
 
-(setq redisplay-dont-pause t)
-(setq xdg-session-type-string "wayland")
-(setq xdg-session-type 1)
-(setq auth-sources '("~/.authinfo"))  ; Prioritizes .gp
+(setq auth-sources '("~/.authinfo"))
 
-;; ────── Bitwarden session – fresh on every Emacs start AND callable on demand ──────
-(defun my/ensure-bw-session ()
-  "Make sure Bitwarden is logged in + unlocked and BW_SESSION is in Emacs env.
-Idempotent – safe to call anytime (startup, manually, after sleep, etc.)."
-  (interactive)                         ; ← makes M-x my/ensure-bw-session work
-  (let* ((script "~/.local/bin/bw-session.sh")
-         (session-file (format "%s/bw-session"
-                               (or (getenv "XDG_RUNTIME_DIR") "/tmp"))))
-    ;; 1. Run the external script (does login/unlock only when needed)
-    (when (file-executable-p script)
-      (shell-command script))
-
-    ;; 2. Read the fresh session token and inject it into Emacs
-    (when (file-exists-p session-file)
-      (setenv "BW_SESSION"
-              (string-trim
-               (shell-command-to-string
-                "cat ${XDG_RUNTIME_DIR:-/tmp}/bw-session 2>/dev/null || echo")))
-      (message "Bitwarden session loaded (%s)"
-               (truncate-string-to-width (getenv "BW_SESSION") 20)))))
-
-;; Run it automatically once when Emacs finishes starting
-(add-hook 'emacs-startup-hook #'my/ensure-bw-session)
+;;; GPTel
 
 (use-package! gptel
   :config
-  ;; ────── Helper: fetch any secret from Bitwarden CLI ──────
   (defun my/bw-get (item-name)
     "Return secret from Bitwarden vault. ITEM-NAME is exact name or ID."
     (string-trim
      (shell-command-to-string
       (format "bw get password %s --session $BW_SESSION"
               (shell-quote-argument item-name)))))
-  (shell-command-to-string "bw status")
 
-  ;; ────── Anthropic (Claude) ──────
+  ;; Anthropic (Claude)
   (defun my/gptel--anthropic-key ()
     (my/bw-get "anthropic api key"))
 
@@ -420,140 +449,15 @@ Idempotent – safe to call anytime (startup, manually, after sleep, etc.)."
               claude-haiku-4-5-20251001
               claude-opus-4-20250514))
 
-  ;; ────── OpenAI (ChatGPT) ──────
+  ;; OpenAI (ChatGPT)
   (defun my/gptel--openai-key ()
-    (my/bw-get "OpenAI"))             
+    (my/bw-get "OpenAI"))
 
   (gptel-make-openai "ChatGPT"
     :stream t
     :key #'my/gptel--openai-key
     :models '("gpt-4o" "gpt-4o-mini" "o1" "o1-mini" "gpt-4-turbo"))
 
-  ;; ────── Default backend & nice keybindings ──────
+  ;; Default backend
   (setq gptel-model   'claude-sonnet-4-5-20250929
-        gptel-backend (gptel-get-backend "Claude")) ; default
-
-  ;; SPC a … menu
-  ;; (map! :leader
-  ;;       :desc "GPTel menu"          "a i" #'gptel-menu
-  ;;       :desc "GPTel quick ask"     "a a" #'gptel-quick
-  ;;       :desc "New Claude chat"     "a c" (lambda () (interactive) (gptel "Claude"))
-  ;;       :desc "New ChatGPT chat"    "a g" (lambda () (interactive) (gptel "ChatGPT")))
-  )
-
-;; ;; ;; ;; ;; ;; ;; ;;
-;; "write anywhere" popup ;;
-;; ;; ;; ;; ;; ;; ;; ;;
-
-;; SUPER+ALT+E (omadots bindings.lua): floating scratch Emacs popup that
-;; sends its text back to whichever window was focused before it opened.
-;;
-;; Tried emacs-everywhere (tecosaur/emacs-everywhere) and tinee
-;; (tusharhero/tinee) here first and abandoned both, having concluded
-;; auto-paste was fundamentally unachievable on this Hyprland build: neither
-;; `ydotool' (uinput/evdev) nor `wtype' (Wayland virtual-keyboard protocol)
-;; appeared to deliver synthetic keystrokes to the focused window, even
-;; though `WAYLAND_DEBUG=1 wtype ...` showed clean, compositor-ack'd
-;; requests. That conclusion was WRONG - a broken test, not a broken tool.
-;; Every verification that session used a `cat > file' terminal as the
-;; target, checked with no trailing newline - terminals buffer typed input
-;; in canonical mode until a newline arrives, so the keystrokes were
-;; genuinely delivered and just sitting unflushed in the pty, never reaching
-;; `cat'. Confirmed by hand against a real (non-terminal) GUI Emacs buffer
-;; target instead: `wtype' delivers text completely, every time, across
-;; repeated clean runs - once one specific race is worked around (below).
-;;
-;; The one real bug: `wtype' has a startup race establishing its Wayland
-;; virtual-keyboard connection - text sent immediately can have its first
-;; several dozen milliseconds of characters silently dropped (confirmed by
-;; hand: a payload came through as e.g. "yload-two-calls" instead of the
-;; full string). A harmless warm-up (`-M shift -m shift' - press and
-;; release Shift, no visible character) before the real payload absorbs
-;; that race - but ONLY when it's part of the SAME `wtype' process/
-;; connection as the real payload. Two SEPARATE `wtype' processes (a
-;; throwaway warm-up call, then a second call for the real text) does NOT
-;; work - each is its own independent Wayland connection, so the second
-;; call hits the exact same race the first one was supposed to absorb;
-;; confirmed by hand, this dropped characters intermittently even after
-;; generously increasing every delay involved. Passing the modifiers AND
-;; the real text to ONE SINGLE `wtype' invocation fixed it outright - 10/10
-;; clean runs, single-line and multi-paragraph, right after `delete-frame'
-;; + a focus-restore dispatch (the real, realistic flow, not just wtype in
-;; isolation). An earlier attempt warmed up with a literal space instead of
-;; a modifier press, which worked but leaked a stray leading space into the
-;; target on every line (an `electric-indent-mode'/`indent-relative'
-;; artifact when the test target was itself an Emacs buffer) - a modifier
-;; press avoids inserting anything visible at all, in the warm-up or
-;; otherwise.
-;;
-;; Focus-restore uses the SAME `hl.dsp.focus' Lua-dispatch mechanism fixed
-;; for emacs-everywhere previously (see this file's git history) - an
-;; explicit dispatch to a captured window address, confirmed reliable across
-;; this whole investigation. This is NOT the same thing as tinee's approach
-;; (relying on Hyprland's native refocus-on-close with no explicit dispatch
-;; at all), which separately proved unreliable under rigorous testing - the
-;; two are unrelated mechanisms and only one of them was ever shown to be
-;; flaky.
-(defun +emacs-float--call (&rest args)
-  "Run a program with ARGS, returning its stdout as a string."
-  (with-temp-buffer
-    (apply #'call-process (car args) nil t nil (cdr args))
-    (buffer-string)))
-
-(defun +emacs-float--active-window-address ()
-  "Return the address of the currently active Hyprland window."
-  (require 'json)
-  (alist-get 'address
-             (json-read-from-string
-              (+emacs-float--call "hyprctl" "-j" "activewindow"))))
-
-(defvar-local +emacs-float-origin nil
-  "Hyprland window address to send this popup buffer's text back to.")
-
-(defun +emacs-float-wtype-send (text)
-  "Type TEXT into the currently focused window via `wtype'.
-A harmless Shift press/release runs first, in the SAME `wtype' process as
-TEXT - see the comment above this section for why that matters."
-  (call-process "wtype" nil nil nil "-M" "shift" "-m" "shift" text))
-
-(defun +emacs-float-done ()
-  "Send this buffer's text to the window +emacs-float was invoked from, then close."
-  (interactive)
-  (let ((text (buffer-string))
-        (origin +emacs-float-origin))
-    (delete-frame)
-    (when origin
-      (call-process "hyprctl" nil nil nil "dispatch"
-                    (format "hl.dsp.focus({ window = %S })"
-                            (concat "address:" origin)))
-      (sleep-for 0.15))
-    (+emacs-float-wtype-send text)))
-
-(defun +emacs-float-cancel ()
-  "Close the popup without sending anything."
-  (interactive)
-  (delete-frame))
-
-(defun +emacs-float-init (origin)
-  "Set up the just-created popup frame: fresh org-mode buffer in Evil
-insert state, remembering ORIGIN to send text back to on C-c C-c."
-  (let ((buf (generate-new-buffer "float")))
-    (switch-to-buffer buf)
-    (org-mode)
-    (setq-local +emacs-float-origin origin)
-    (local-set-key (kbd "C-c C-c") #'+emacs-float-done)
-    (local-set-key (kbd "C-c C-k") #'+emacs-float-cancel)
-    (evil-insert-state)))
-
-;;;###autoload
-(defun +emacs-float ()
-  "Open a floating scratch Emacs popup; C-c C-c sends its text back to
-whichever window was focused when this was invoked (C-c C-k cancels)."
-  (interactive)
-  (let ((origin (+emacs-float--active-window-address)))
-    (call-process "emacsclient" nil 0 nil
-                  "--create-frame" "--frame-parameters"
-                  "((name . \"emacs-float\"))"
-                  "--eval"
-                  (format "(+emacs-float-init %S)" origin))))
-
+        gptel-backend (gptel-get-backend "Claude")))

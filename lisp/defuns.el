@@ -1,5 +1,6 @@
 ;;; lisp/defuns.el -*- lexical-binding: t; -*-
 
+;;; Buffer Navigation
 
 (defun xah-user-buffer-q ()
   "Return t if current buffer is a user buffer, else nil.
@@ -64,6 +65,8 @@ Version 2016-06-19"
     (while (and (not (string-equal "*" (substring (buffer-name) 0 1))) (< i 20))
       (setq i (1+ i)) (previous-buffer))))
 
+;;; Eval Helpers
+
 (defun user/eval-list-dwim ()
   (interactive)
   (cond ((eq major-mode 'emacs-lisp-mode)
@@ -92,12 +95,25 @@ Version 2016-06-19"
         ((eq major-mode 'clojure-mode)
          (call-interactively 'eval-sexp-fu-cider-pprint-eval-sexp-inner-sexp))))
 
+(defun eval-n-defuns (n)
+  "Evaluate N top-level forms, starting with the current one."
+  (interactive "P")
+  (+eval/region (car (bounds-of-thing-at-point 'defun))
+                (save-excursion
+                  (dotimes (_ (or n 2))
+                    (end-of-defun))
+                  (point))))
+
+;;; LSP / Imenu
+
 (defun imenu-lsp-ui-smart-toggle ()
   (interactive)
   (if (get-buffer-window "*lsp-ui-imenu*" t)
       (progn (select-window (get-buffer-window "*lsp-ui-imenu*"))
              (lsp-ui-imenu--kill))
     (lsp-ui-imenu)))
+
+;;; Org
 
 (defun ar/org-insert-link-dwim ()
   "Like `org-insert-link' but with personal dwim preferences."
@@ -124,14 +140,7 @@ Version 2016-06-19"
           (t
            (call-interactively 'org-insert-link)))))
 
-(defun eval-n-defuns (n)
-  "Evaluate N top-level forms, starting with the current one."
-  (interactive "P")
-  (+eval/region (car (bounds-of-thing-at-point 'defun))
-                (save-excursion
-                  (dotimes (_ (or n 2))
-                    (end-of-defun))
-                  (point))))
+;;; Editing Utilities
 
 (defun my-delete-leading-whitespace (start end)
   "Delete whitespace at the beginning of each line in region."
@@ -139,6 +148,8 @@ Version 2016-06-19"
   (save-excursion
     (if (not (bolp)) (forward-line 1))
     (delete-whitespace-rectangle (point) end nil)))
+
+;;; Projects
 
 (defun suggest-project-root ()
   "Get project root."

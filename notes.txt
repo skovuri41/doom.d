@@ -1,1 +1,7 @@
 evil-visual-block
+
+maple mono nf font
+
+use system font without overriding in emacs
+
+
