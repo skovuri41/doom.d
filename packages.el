@@ -3,13 +3,6 @@
 
 ;; Run 'doom sync' after editing this file, then restart Emacs (or `M-x doom/reload').
 
-;;; Completion
-
-(package! cape)
-(package! corfu)
-(package! kind-icon)
-(package! consult)
-
 ;;; Editing & Navigation
 
 (package! all-the-icons-ibuffer)

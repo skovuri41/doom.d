@@ -325,6 +325,11 @@
 
 ;;; Completion
 
+;; Corfu itself, cape's per-mode dabbrev/file/elisp-block wiring, snippet
+;; candidates (yasnippet-capf), icons (nerd-icons-corfu), and corfu-history's
+;; savehist integration are all handled by Doom's `:completion corfu' module
+;; (enabled in init.el). This just adds keys to explicitly trigger one
+;; specific completion source on demand, on top of what pops up automatically.
 (use-package! cape
   :config
   (map! (:prefix "C-c f"
@@ -334,25 +339,7 @@
          :i "k" #'cape-keyword
          :i "i" #'cape-ispell
          :i "s" #'cape-symbol
-         :i "t" #'cape-tex))
-  :init
-  (add-to-list 'completion-at-point-functions #'cape-file)
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  (add-to-list 'completion-at-point-functions #'cape-keyword))
-
-(use-package! kind-icon
-  :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-;; Rank completion candidates by how recently/often they were picked, and
-;; persist that ranking via savehist (`corfu-history' registers itself into
-;; `savehist-minibuffer-history-variables' the first time it's used).
-(after! corfu
-  (require 'corfu-history)
-  (corfu-history-mode 1))
+         :i "t" #'cape-tex)))
 
 ;;; Python
 
@@ -376,11 +363,6 @@
                                     :test-dir "tests"
                                     :test-prefix "test_"
                                     :test-suffix "_test"))
-
-(use-package! company
-  :config
-  ;; 'append ensures this runs after other inferior-python-mode-hook functions
-  (add-hook 'inferior-python-mode-hook (lambda () (company-mode -1)) 'append))
 
 (setq envrc-direnv-executable "/usr/bin/direnv")
 
