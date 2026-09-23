@@ -43,9 +43,8 @@
        ophints           ; highlight the region an operation acts on
        (popup +defaults)   ; tame sudden yet inevitable temporary windows
        tabs              ; a tab bar for Emacs
-       ;; treemacs
-                                        ; a project drawer, like neotree but cooler
-       ;;unicode           ; extended unicode support for various languages
+       treemacs          ; a project drawer, like neotree but cooler
+       unicode         ; extended unicode support for various languages
        vc-gutter         ; vcs diff in the fringe
        vi-tilde-fringe   ; fringe tildes to mark beyond EOB
        window-select     ; visually switch windows
@@ -103,7 +102,7 @@
        ;;prodigy           ; FIXME managing external services & code builders
        ;;rgb               ; creating color strings
        ;;taskrunner        ; taskrunner for all your projects
-       ;;terraform         ; infrastructure as code
+       terraform         ; infrastructure as code
        ;;tmux              ; an API for interacting with tmux
        ;;upload            ; map local to remote projects via ssh/ftp
 
@@ -182,7 +181,10 @@
        :app
        ;;calendar
        emms
-       everywhere        ; *leave* Emacs!? You must be joking
+       ;;everywhere        ; disabled 2026-09-23 - see doom.d config.el for why
+                          ; (its bundled Hyprland support used broken classic
+                          ; hyprctl dispatch syntax, and auto-paste doesn't
+                          ; work on this Hyprland build regardless of tool)
        ;;irc               ; how neckbeards socialize
        (rss +org)        ; emacs as an RSS reader
        ;;twitter           ; twitter client https://twitter.com/vnought

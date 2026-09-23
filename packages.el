@@ -74,13 +74,10 @@
 (package! jet)
 (package! obsidian)
 (package! desktop-environment)
-(package! gptel :recipe (:nonrecursive t))
 (package! org-superstar)
 (package! ox-tailwind
   :recipe (:host github :repo "vascoferreira25/ox-tailwind"))
 
-(package! claude-code :recipe (:host github :repo "stevemolitor/claude-code.el" ))
-(package! monet :recipe (:host github :repo "stevemolitor/monet"))
 ;; GPTel for Claude
 (package! gptel
   :recipe (:host github :repo "karthink/gptel"))
