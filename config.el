@@ -260,12 +260,20 @@
           try-complete-lisp-symbol-partially
           try-complete-lisp-symbol)))
 
-;;; Consult History
+;;; Consult
 
 ;; Scoped to the minibuffer only - a global "M-r" would clobber the default
 ;; `move-to-window-line-top-bottom' in every other buffer.
 (map! :map minibuffer-local-map
       "M-r" #'consult-history)
+
+;; Insert-state only: Evil already remaps "M-y" to `evil-paste-pop' in normal
+;; state (see evil-maps.el), and `P' already gives fuzzy kill-ring search
+;; there via `consult-yank-from-kill-ring'. In insert state "M-y" currently
+;; falls through to plain `yank-pop', which only works right after an
+;; Emacs-style C-y (not evil's p/P) - remapping it here is a real gap-fill,
+;; not a duplicate of either of those.
+(map! :i [remap yank-pop] #'consult-yank-pop)
 
 ;;; Dired
 
@@ -405,24 +413,25 @@
   (setq interprogram-cut-function 'my-wl-copy)
   (setq interprogram-paste-function 'my-wl-paste))
 
-;;; Secrets & Auth
-
-(setq auth-sources '("~/.authinfo"))
-
 ;;; GPTel
+
+;; Secret IDs from Bitwarden Secrets Manager (`bws') - these are UUIDs, not
+;; the secrets themselves, so they're safe to keep in this tracked file.
+(defconst +bws-claude-api-secret-id "f7f07964-6d9f-4fdf-8455-b4ce012aafa8")
+
+(defun my/bws-get (secret-id)
+  "Return a Bitwarden Secrets Manager secret's value by its SECRET-ID (a UUID).
+Requires BWS_ACCESS_TOKEN to be set in the environment (already the case on
+this machine) and `jq' on PATH."
+  (string-trim
+   (shell-command-to-string
+    (format "bws secret get %s -o json | jq -r .value"
+            (shell-quote-argument secret-id)))))
 
 (use-package! gptel
   :config
-  (defun my/bw-get (item-name)
-    "Return secret from Bitwarden vault. ITEM-NAME is exact name or ID."
-    (string-trim
-     (shell-command-to-string
-      (format "bw get password %s --session $BW_SESSION"
-              (shell-quote-argument item-name)))))
-
-  ;; Anthropic (Claude)
   (defun my/gptel--anthropic-key ()
-    (my/bw-get "anthropic api key"))
+    (my/bws-get +bws-claude-api-secret-id))
 
   (gptel-make-anthropic "Claude"
     :stream t
@@ -431,15 +440,7 @@
               claude-haiku-4-5-20251001
               claude-opus-4-20250514))
 
-  ;; OpenAI (ChatGPT)
-  (defun my/gptel--openai-key ()
-    (my/bw-get "OpenAI"))
+  ;; TODO: ChatGPT backend, once its Secrets Manager entry exists.
 
-  (gptel-make-openai "ChatGPT"
-    :stream t
-    :key #'my/gptel--openai-key
-    :models '("gpt-4o" "gpt-4o-mini" "o1" "o1-mini" "gpt-4-turbo"))
-
-  ;; Default backend
   (setq gptel-model   'claude-sonnet-4-5-20250929
         gptel-backend (gptel-get-backend "Claude")))
