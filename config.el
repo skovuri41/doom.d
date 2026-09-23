@@ -235,8 +235,19 @@
 ;; templates since this whole directory is tracked in git. Personal/sensitive
 ;; snippets (address, signature, etc.) go under `org-directory' instead,
 ;; which isn't a git repo and never reaches a remote.
+;;
+;; `yas-global-mode' (enabled by Doom's module) scans `yas-snippet-dirs' as
+;; soon as it turns on, which happens while the dashboard/*scratch* buffer -
+;; in `fundamental-mode' - already exists, so fundamental-mode's JIT-load
+;; queue fires and gets consumed immediately, before this file even runs.
+;; No amount of `:init' vs `after!' timing here beats that, since the
+;; buffer predates this file. `yas-load-directory' with USE-JIT is the
+;; actual fix: unlike a plain directory-list append, it explicitly re-checks
+;; for buffers already in the relevant mode and force-loads for them too.
 (after! yasnippet
-  (add-to-list 'yas-snippet-dirs (concat org-directory "snippets/") t))
+  (let ((dir (concat org-directory "snippets/")))
+    (add-to-list 'yas-snippet-dirs dir t)
+    (yas-load-directory dir t)))
 
 ;;; Historical-Text Expansion (M-/)
 
