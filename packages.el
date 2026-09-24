@@ -24,6 +24,7 @@
 (package! org-superstar)
 (package! ox-tailwind
   :recipe (:host github :repo "vascoferreira25/ox-tailwind"))
+(package! org-kanban)
 
 ;;; Clojure
 

@@ -228,6 +228,12 @@
          :i "<return>" nil
          :i "RET" nil)))
 
+;;; GTD
+
+;; See gtd.el - kept in its own file per the GTD handover spec. Loaded here,
+;; after org-directory/org-roam-directory are both set above.
+(load! "gtd")
+
 ;;; Snippets
 
 ;; Doom's `:editor snippets' module (already enabled) wires up yasnippet with
@@ -354,6 +360,7 @@
   (map! (:prefix "C-c f"
          :i "p" #'completion-at-point
          :i "d" #'cape-dabbrev
+         :i "h" #'cape-history
          :i "f" #'cape-file
          :i "k" #'cape-keyword
          :i "i" #'cape-ispell
