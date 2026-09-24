@@ -115,6 +115,22 @@ Version 2016-06-19"
 
 ;;; Org
 
+(defun ar/url-title (url &optional timeout)
+  "Fetch URL's <title>, or nil if that fails or takes longer than TIMEOUT
+seconds (default 5). `url-retrieve-synchronously' has no timeout of its
+own, so a slow or unreachable URL can otherwise block the entire (single-
+threaded) Emacs process indefinitely - confirmed by hand: this hung a
+whole daemon, unresponsive even to a trivial (+ 1 1) eval, not just the
+command that triggered it."
+  (condition-case nil
+      (when-let* ((buf (url-retrieve-synchronously url t t (or timeout 5))))
+        (unwind-protect
+            (with-current-buffer buf
+              (dom-text (car (dom-by-tag (libxml-parse-html-region (point-min) (point-max))
+                                        'title))))
+          (kill-buffer buf)))
+    (error nil)))
+
 (defun ar/org-insert-link-dwim ()
   "Like `org-insert-link' but with personal dwim preferences."
   (interactive)
@@ -130,13 +146,7 @@ Version 2016-06-19"
           ((and clipboard-url (not point-in-link))
            (insert (org-make-link-string
                     clipboard-url
-                    (read-string "title: "
-                                 (with-current-buffer (url-retrieve-synchronously clipboard-url)
-                                   (dom-text (car
-                                              (dom-by-tag (libxml-parse-html-region
-                                                           (point-min)
-                                                           (point-max))
-                                                          'title))))))))
+                    (read-string "title: " (ar/url-title clipboard-url)))))
           (t
            (call-interactively 'org-insert-link)))))
 

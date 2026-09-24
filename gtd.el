@@ -32,7 +32,8 @@
         '(("i" "Inbox" entry (file "inbox.org") "* TODO %?\n%U\n")
           ("l" "Inbox + link" entry (file "inbox.org") "* TODO %?\n%U\n%a\n")
           ("p" "Project" entry (file+headline "gtd.org" "Projects")
-           "* PROJ %^{Outcome}\n%U\n** NEXT %?\n"))
+           "* PROJ %^{Outcome}\n%U\n** NEXT %?\n")
+          ("b" "Bookmark" entry (file "bookmarks.org") "* %?\n%U\n"))
 
         org-agenda-custom-commands
         '(("g" "GTD"
@@ -44,7 +45,23 @@
             (todo "TODO" ((org-agenda-overriding-header "Inbox")
                           (org-agenda-files (list org-default-notes-file))))))))
 
-  (advice-add 'org-refile :after (lambda (&rest _) (org-save-all-org-buffers))))
+  (advice-add 'org-refile :after (lambda (&rest _) (org-save-all-org-buffers)))
+
+  ;; "b" (Bookmark) needs no target-picking prompt, unlike the other
+  ;; templates - it just wants whatever URL is on the clipboard, with its
+  ;; title auto-fetched, inserted as a link. `ar/org-insert-link-dwim'
+  ;; (lisp/defuns.el) already does exactly that, but it works by inserting
+  ;; at point as a side effect, not by returning a string - so it can't go
+  ;; inside the template text itself via %(...), which org-capture
+  ;; evaluates in a throwaway temp buffer, not the real capture buffer (see
+  ;; org-capture's own docstring for %(sexp)). Running the existing,
+  ;; unmodified function from a capture-mode-hook instead, scoped to just
+  ;; this template's key, puts it in the real buffer at the right position
+  ;; (%? placed point there first) with no change to defuns.el.
+  (add-hook 'org-capture-mode-hook
+    (defun +org-capture-bookmark-link-h ()
+      (when (equal (org-capture-get :key) "b")
+        (ar/org-insert-link-dwim)))))
 
 ;; Roam templates match the existing convention (flat "${slug}.org" files,
 ;; no subfolders/timestamps, `:if-new' rather than `:target') instead of the
@@ -203,18 +220,34 @@ the finalize hook correctly.)"
          (+org-capture-hypr--restore-focus-h)
          (delete-frame)))))
 
+  (defun +org-capture-float--existing-frame ()
+    "Return the live capture-popup frame, if one is already open."
+    (cl-find-if (lambda (f)
+                  (and (equal (frame-parameter f 'name)
+                              (alist-get 'name +org-capture-frame-parameters))
+                       (frame-parameter f 'transient)))
+                (frame-list)))
+
   ;;;###autoload
   (defun +org-capture-float ()
     "Open a floating Emacs frame straight into the unified capture menu,
 via a nested `emacsclient --create-frame' (the proven `+emacs-float'
 pattern), not Doom's `+org-capture/open-frame' (which hangs this build -
 see the comment above). Restores focus to whichever Hyprland window was
-active when invoked, once capture finishes or is aborted."
+active when invoked, once capture finishes or is aborted.
+
+If a capture popup is already open, focuses that instead of spawning a
+second one - pressing SUPER+X back-to-back otherwise stacks independent
+popups while overwriting the single `+org-capture-hypr-origin' each one
+reads on finish, so whichever finishes first restores focus to the
+wrong window instead of where you actually started."
     (interactive)
-    (setq +org-capture-hypr-origin (+org-capture-hypr--active-window-address))
-    (call-process "emacsclient" nil 0 nil
-                  "--create-frame" "--frame-parameters"
-                  (format "%S" (list (cons 'name (alist-get 'name +org-capture-frame-parameters))
-                                     (cons 'transient (alist-get 'transient +org-capture-frame-parameters))))
-                  "--eval"
-                  "(+org-capture-float-init)")))
+    (if-let* ((existing (+org-capture-float--existing-frame)))
+        (select-frame-set-input-focus existing)
+      (setq +org-capture-hypr-origin (+org-capture-hypr--active-window-address))
+      (call-process "emacsclient" nil 0 nil
+                    "--create-frame" "--frame-parameters"
+                    (format "%S" (list (cons 'name (alist-get 'name +org-capture-frame-parameters))
+                                       (cons 'transient (alist-get 'transient +org-capture-frame-parameters))))
+                    "--eval"
+                    "(+org-capture-float-init)"))))
