@@ -269,6 +269,11 @@
 (diary)
 (add-hook 'diary-list-entries-hook 'diary-sort-entries t)
 
+;; Surface diary entries (holidays, from the default `calendar-holidays'
+;; list, plus anything else in `diary-file') directly in the org-agenda
+;; view, instead of only in the separate diary buffer.
+(setq org-agenda-include-diary t)
+
 (after! evil-org
   (map! (:map evil-org-mode-map
          :i "C-j" nil

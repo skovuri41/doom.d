@@ -25,6 +25,11 @@
         org-refile-use-outline-path 'file
         org-outline-path-complete-in-steps nil
         org-refile-allow-creating-parent-nodes 'confirm
+        ;; Keep the refile-target completion list from accumulating finished
+        ;; work: a DONE heading is never somewhere you still want to file a
+        ;; new task under.
+        org-refile-target-verify-function
+        (lambda () (not (member (nth 2 (org-heading-components)) org-done-keywords)))
 
         org-stuck-projects '("TODO=\"PROJ\"" ("NEXT" "WAIT") nil "")
 
@@ -62,6 +67,24 @@
     (defun +org-capture-bookmark-link-h ()
       (when (equal (org-capture-get :key) "b")
         (ar/org-insert-link-dwim)))))
+
+;; Habit tracking: a habit is a normal task with a `:STYLE: habit' property
+;; and a repeating SCHEDULED date (e.g. `.+1d/3d'); the agenda then shows a
+;; consistency graph instead of a plain scheduled entry. `org-habit' has to
+;; be loaded explicitly - Doom's org module already handles sizing the graph
+;; nicely (see +org-habit-resize-graph-h), it just needs the feature present.
+;; Tip for actually using this: put habits under their own heading with
+;; `:LOGGING: DONE(!)' in its property drawer (inherited by its habit
+;; subtasks) so cancelling a habit doesn't log a timestamp and skew the
+;; consistency graph - that's a per-file/heading convention in gtd.org
+;; itself, not something to set here.
+(after! org
+  (require 'org-habit))
+
+;; `K' in the agenda hides habits for the rest of the session, which is easy
+;; to forget about since Emacs stays running for days - force them back on
+;; every morning so a hidden habit doesn't silently stay hidden.
+(run-at-time "06:00" 86400 (lambda () (setq org-habit-show-habits t)))
 
 ;; Roam templates match the existing convention (flat "${slug}.org" files,
 ;; no subfolders/timestamps, `:if-new' rather than `:target') instead of the
