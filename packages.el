@@ -32,14 +32,8 @@
 (package! eval-sexp-fu)
 (package! jet)
 
-;;; Python
-
-(package! virtualenvwrapper)
-(package! python-black)
-
 ;;; Desktop / Notes
 
-(package! obsidian)
 (package! desktop-environment)
 
 ;;; GPTel (Claude)

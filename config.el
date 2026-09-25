@@ -83,6 +83,21 @@
   ;;   caches other, non-printable Magit state).
   )
 
+;; `(undo +tree)' persists undo history to disk keyed by a sha1 hash of the
+;; buffer's content at save time. Any time a file changes on disk without
+;; going through that Emacs buffer (Git, another editor, a tool editing the
+;; file directly, etc.) and the buffer picks up the new content, the hash no
+;; longer matches and `undo-tree-load-history' can't reconcile the saved
+;; history with the buffer -- it's harmless (undo just starts fresh for that
+;; buffer) but prints "Buffer has been modified since undo-tree history was
+;; saved to ...; could not load undo-tree history" every time. Doom already
+;; silences the equivalent save-side chatter (`undo-tree-save-history' via
+;; `doom-shut-up-a', in doom+/modules/emacs/undo/config.el) but not this
+;; load-side one -- apply the same treatment: it still lands in *Messages*,
+;; just not the echo area.
+(after! undo-tree
+  (advice-add 'undo-tree-load-history :around #'doom-shut-up-a))
+
 ;;; Which-Key
 
 (setq which-key-idle-delay 0.5)
@@ -171,15 +186,64 @@
   (add-hook 'org-mode-hook (lambda () (org-autolist-mode)))
   (add-hook 'org-mode-hook #'hl-line-mode)
   (setq org-file-apps
-        '((auto-mode . emacs)
-          (directory . emacs)
-          ("\\.org\\'" . emacs)
-          ("\\.txt\\'" . emacs)
-          ("\\.mm\\'" . default)
-          ("\\.x?html?\\'" . system)
-          ("\\.pdf::\\([0-9]+\\)?\\'" . "zathura %s -P %1")
-          ("\\.pdf\\'" . "zathura %s")))
+        '((auto-mode . emacs) ; Open files matching Emacs modes (like .org) inside Emacs
+          (directory . emacs) ; Open directories in Dired
+          (system . "xdg-open %s")     ; Fallback for system defaults
+          (t . "xdg-open %s")))        ; Catch-all rule for all other extensions
   (setq org-ctrl-k-protect-subtree t))
+
+;; `calendar-exit' (bound to `q') restores the window configuration that was
+;; saved when the calendar was opened -- e.g. by `org-agenda-goto-calendar'.
+;; If a buffer in that saved config (typically *Org Agenda*, after it got
+;; refreshed/regenerated while the calendar was up) no longer exists,
+;; `set-window-configuration' can't put it back and leaves a stray split
+;; window showing some unrelated buffer instead of collapsing back to one
+;; window. When that happens (calendar's own window is gone but we're still
+;; split), just drop back to a single window.
+(after! calendar
+  (advice-add 'calendar-exit :after #'my/calendar-exit-fixup))
+
+(defun my/calendar-exit-fixup (&rest _)
+  (when (and (> (count-windows) 1)
+             (not (get-buffer-window calendar-buffer)))
+    (delete-other-windows)))
+
+;; The other direction of that round trip: from the calendar, jumping to the
+;; agenda for the date at point (`org-calendar-goto-agenda') and quitting it
+;; again (`q'/`Q'). Doom's org module sets `org-agenda-window-setup' to
+;; `current-window' (see doom+/modules/lang/org/config.el), meaning the agenda
+;; is meant to just take over the window it was called from. But the calendar
+;; popup is a *dedicated* Doom popup window, and a dedicated window refuses to
+;; show a different buffer in place -- so Org silently pops the agenda into a
+;; brand new window next to it instead. `org-agenda--quit' only ever calls
+;; `delete-window' when `org-agenda-window-setup' is NOT `current-window', so
+;; that extra window never gets cleaned up: quitting just replaces its buffer
+;; with whatever Emacs falls back to, leaving a stray split showing an
+;; unrelated buffer instead of landing back in the calendar.
+;;
+;; (I tried preventing the split from ever happening -- generically, for any
+;; calendar hotkey, via pre/post-command-hook watching calendar-mode -- but
+;; Emacs's window-splitting fallback logic turned out too unpredictable to
+;; rely on: which window ends up being "the new one" isn't consistent, and it
+;; broke a live test. Cleaning up after the fact, scoped to the one command
+;; this is actually verified against, is far more reliable.)
+;;
+;; `org-agenda--quit' is the shared internal function behind `org-agenda-quit',
+;; `org-agenda-Quit' and `org-agenda-exit', so advising it covers all three.
+;; This is a no-op whenever the calendar isn't actually involved.
+(after! org-agenda
+  (advice-add 'org-agenda--quit :around #'my/org-agenda-quit-and-cleanup))
+
+(defun my/org-agenda-quit-and-cleanup (orig-fn &rest args)
+  (let ((agenda-win (selected-window)))
+    (apply orig-fn args)
+    (when-let (cal-win (get-buffer-window calendar-buffer))
+      (when (and (window-live-p agenda-win)
+                 (not (eq agenda-win cal-win))
+                 (not (one-window-p agenda-win)))
+        (delete-window agenda-win))
+      (when (window-live-p cal-win)
+        (select-window cal-win)))))
 
 (use-package! org-superstar
   :init
@@ -198,22 +262,8 @@
     (setq org-roam-index-file "index.org")
     (setq org-roam-graph-extra-config '(("overlap" . "prism")
                                         ("color" . "skyblue"))
-          org-roam-graph-exclude-matcher "private")
-
-    (setq org-roam-capture-templates
-          '(("d" "default" plain
-             "%?"
-             :if-new (file+head "${slug}.org"
-                                "#+title: ${title}\n")
-             :immediate-finish t
-             :unnarrowed t))))
-  (setq org-roam-dailies-directory "daily/")
-  (setq org-roam-dailies-capture-templates
-        '(("d" "default" entry
-           #'org-roam-capture--get-point
-           "* %?"
-           :file-name "daily/%<%Y-%m-%d>.org"
-           :head "#+title: %<%Y-%m-%d>\n\n"))))
+          org-roam-graph-exclude-matcher "private"))
+  (setq org-roam-dailies-directory "daily/"))
 
 (setq diary-file "~/Documents/org/diary")
 (diary)
@@ -367,29 +417,6 @@
          :i "s" #'cape-symbol
          :i "t" #'cape-tex)))
 
-;;; Python
-
-(use-package! virtualenvwrapper)
-(after! virtualenvwrapper
-  (setq venv-location "~/.virtualenvs/"))
-
-(use-package! python-black
-  :after python
-  :hook (python-mode . python-black-on-save-mode-enable-dwim))
-
-(after! python
-  (add-to-list 'python-shell-completion-native-disabled-interpreters "python3"))
-
-;; Projectile project type - python + poetry + pytest
-(after! projectile
-  (projectile-register-project-type 'python-poetry '("poetry.lock")
-                                    :project-file "poetry.lock"
-                                    :compile "poetry build"
-                                    :test "poetry run pytest"
-                                    :test-dir "tests"
-                                    :test-prefix "test_"
-                                    :test-suffix "_test"))
-
 (setq envrc-direnv-executable "/usr/bin/direnv")
 
 ;;; Icons
@@ -397,20 +424,6 @@
 (use-package! nerd-icons
   :custom
   (doom-modeline-major-mode-icon t))
-
-;;; Obsidian
-
-(use-package! obsidian
-  :config
-  (obsidian-specify-path "~/Documents/notes")
-  (global-obsidian-mode t)
-  :custom
-  (obsidian-inbox-directory "inbox") ;; used by `obsidian-capture'
-  :bind (:map obsidian-mode-map
-              ("C-c C-o" . obsidian-follow-link-at-point)
-              ("C-c C-b" . obsidian-backlink-jump)
-              ("C-c C-l" . obsidian-insert-wikilink)
-              ("C-c M-o" . obsidian-hydra/body)))
 
 ;;; Wayland / Hyprland Integration
 
