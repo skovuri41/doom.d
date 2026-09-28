@@ -93,7 +93,18 @@ TEXT - see the comment above this section for why that matters."
 
 (defun +emacs-float-init (origin)
   "Set up the just-created popup frame: fresh org-mode buffer in Evil
-insert state, remembering ORIGIN to send text back to on C-c C-c."
+insert state, remembering ORIGIN to send text back to on C-c C-c.
+
+Also (re-)tags this frame with a dummy `workspace' parameter, overwriting
+whatever persp-mode already set - confirmed live 2026-09-28 (on gtd.el's
+identically-patterned capture popup) that the `workspace' cons passed via
+`+emacs-float''s own `--frame-parameters' does NOT survive: persp-mode's
+own frame-setup hook stamps every new frame with the CURRENT workspace
+immediately after creation, running after `--frame-parameters' is applied
+but before this `--eval' runs, so this is the only point late enough to
+actually stick. See gtd.el's `+org-capture-hypr--finalize-on-manual-
+close-h' comment for why this matters - same root cause, same fix."
+  (set-frame-parameter (selected-frame) 'workspace "*emacs-float-popup*")
   (let ((buf (generate-new-buffer "float")))
     (switch-to-buffer buf)
     (org-mode)
@@ -108,8 +119,19 @@ insert state, remembering ORIGIN to send text back to on C-c C-c."
 whichever window was focused when this was invoked (C-c C-k cancels)."
   (interactive)
   (let ((origin (+emacs-float--active-window-address)))
+    ;; `workspace' here is load-bearing, not cosmetic - see gtd.el's
+    ;; `+org-capture-hypr--finalize-on-manual-close-h' comment for the full
+    ;; story (traced live 2026-09-28): a frame with no explicit workspace of
+    ;; its own inherits the CURRENT one (persp-mode tags every new frame by
+    ;; default), and closing it externally then reads as "the main
+    ;; workspace's frame just closed" to Doom's own
+    ;; `+workspaces-delete-associated-workspace-h' (on `delete-frame-
+    ;; functions'), which responds by killing the entire main workspace -
+    ;; `save-some-buffers'-prompting across every buffer in the session,
+    ;; not just this popup's. A value that can never match a real
+    ;; workspace name keeps this frame from ever being mistaken for it.
     (call-process "emacsclient" nil 0 nil
                   "--create-frame" "--frame-parameters"
-                  "((name . \"emacs-float\"))"
+                  "((name . \"emacs-float\") (workspace . \"*emacs-float-popup*\"))"
                   "--eval"
                   (format "(+emacs-float-init %S)" origin))))

@@ -184,7 +184,18 @@
       (buffer-string)))
 
   (defun +org-capture-hypr--active-window-address ()
-    "Return the address of the currently active Hyprland window."
+    "Return the address of the currently active Hyprland window.
+
+If this ever throws `(error \"*ERROR*: JSON readtable error: 67\")',
+it's not a Lisp bug here: the Emacs daemon's `HYPRLAND_INSTANCE_SIGNATURE'
+has gone stale relative to the live Hyprland instance (e.g. Hyprland
+reloaded/restarted without the daemon restarting), so `hyprctl' can't
+find its socket and prints a connect-error string instead of JSON.
+Fix live without restarting the daemon (loses no state):
+  emacsclient --eval \"(setenv \\\"HYPRLAND_INSTANCE_SIGNATURE\\\" \\\"$HYPRLAND_INSTANCE_SIGNATURE\\\")\"
+run from a shell in the *current* Hyprland session. Same env is read by
+`+emacs-float' (lisp/emacs-float.el), so that binding breaks the same way
+at the same time."
     (require 'json)
     (alist-get 'address
                (json-read-from-string
@@ -206,12 +217,42 @@
   ;; clicking the X) while a capture is mid-flight, which would otherwise
   ;; abandon org-capture's indirect buffer and staging state instead of
   ;; cleanly finalizing it. This finalizes it first in that case.
+  ;;
+  ;; `ignore-errors' alone is NOT enough here - confirmed live 2026-09-28,
+  ;; traced with an instrumented backtrace (not guessed): closing the popup
+  ;; externally hit a real, blocking "Save file .../inbox.org? (y, n, !,
+  ;; ...)" prompt with nobody there to answer it, hanging the daemon
+  ;; indefinitely - which then silently broke `kill-emacs'/`erestart' the
+  ;; next time either ran, since it's the same command loop.
+  ;;
+  ;; The ACTUAL source surprised us: not `org-capture-kill' at all. It was
+  ;; `+workspaces-delete-associated-workspace-h', an EARLIER function on
+  ;; this same `delete-frame-functions' hook (Doom's own, from `:ui
+  ;; workspaces'/persp-mode) - it saw this frame tagged with the *main*
+  ;; workspace (every new frame inherits the current one by default, and
+  ;; the nested `emacsclient --create-frame' call below never overrode it),
+  ;; concluded the main workspace's frame had just closed, and called
+  ;; `+workspace/kill' on it - which runs `save-some-buffers' across EVERY
+  ;; buffer in the *whole session*, not just this popup's. The real fix is
+  ;; where the frame is created, below: giving it an explicit `workspace'
+  ;; frame parameter that can never match a real workspace name, so that
+  ;; hook's guard condition is never true for this frame in the first
+  ;; place. `org-capture-kill' was never actually the culprit - but this
+  ;; hardening (the save-some-buffers/y-or-n-p/yes-or-no-p override and
+  ;; marking the buffer unmodified first) stays as defense-in-depth in case
+  ;; it ever does raise its own prompt via some other path.
   (add-hook! 'delete-frame-functions
     (defun +org-capture-hypr--finalize-on-manual-close-h (frame)
       (with-selected-frame frame
         (when (and (+org-capture-frame-p)
                    (bound-and-true-p org-capture-mode))
-          (ignore-errors (org-capture-kill))))))
+          (let ((buf (window-buffer (frame-selected-window frame))))
+            (when (buffer-live-p buf)
+              (with-current-buffer buf (set-buffer-modified-p nil))))
+          (cl-letf (((symbol-function 'save-some-buffers) #'ignore)
+                    ((symbol-function 'y-or-n-p) (lambda (&rest _) nil))
+                    ((symbol-function 'yes-or-no-p) (lambda (&rest _) nil)))
+            (ignore-errors (org-capture-kill)))))))
 
   (defun +org-capture-float-init ()
     "Run inside the freshly created popup frame: go straight into the
@@ -234,7 +275,17 @@ capture session yet at that point, so there's nothing for
 otherwise sit open and empty. Catch that quit signal and clean up
 manually instead. (Aborting an actual capture buffer, once one is open,
 is unaffected - that's the existing C-c C-k, which already goes through
-the finalize hook correctly.)"
+the finalize hook correctly.)
+
+Also (re-)tags this frame with a dummy `workspace' parameter, overwriting
+whatever persp-mode already set - confirmed live 2026-09-28 that the
+`workspace' cons passed via `+org-capture-float''s own `--frame-parameters'
+does NOT survive: persp-mode's own frame-setup hook stamps every new frame
+with the CURRENT workspace immediately after creation, running after
+`--frame-parameters' is applied but before this `--eval' runs, so this is
+the only point late enough to actually stick. See
+`+org-capture-hypr--finalize-on-manual-close-h' for why this matters."
+    (set-frame-parameter (selected-frame) 'workspace "*capture-popup*")
     (switch-to-buffer (get-buffer-create "*org-capture-float*"))
     (letf! ((#'pop-to-buffer #'switch-to-buffer))
       (condition-case nil
@@ -268,9 +319,20 @@ wrong window instead of where you actually started."
     (if-let* ((existing (+org-capture-float--existing-frame)))
         (select-frame-set-input-focus existing)
       (setq +org-capture-hypr-origin (+org-capture-hypr--active-window-address))
+      ;; `workspace' here is NOT cosmetic - see `+org-capture-hypr--finalize-
+      ;; on-manual-close-h' below for why a frame with no explicit workspace
+      ;; of its own is dangerous: it silently inherits the CURRENT one
+      ;; (persp-mode tags every new frame with it by default), and closing
+      ;; it externally then reads as "the main workspace's frame just
+      ;; closed" to Doom's own `+workspaces-delete-associated-workspace-h'
+      ;; (also on `delete-frame-functions') - which kills the ENTIRE main
+      ;; workspace in response, `save-some-buffers'-prompting on every
+      ;; buffer in it. A value that can never match a real workspace name
+      ;; keeps this frame's closing from ever being mistaken for that.
       (call-process "emacsclient" nil 0 nil
                     "--create-frame" "--frame-parameters"
                     (format "%S" (list (cons 'name (alist-get 'name +org-capture-frame-parameters))
-                                       (cons 'transient (alist-get 'transient +org-capture-frame-parameters))))
+                                       (cons 'transient (alist-get 'transient +org-capture-frame-parameters))
+                                       (cons 'workspace "*capture-popup*")))
                     "--eval"
                     "(+org-capture-float-init)"))))
