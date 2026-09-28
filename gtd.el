@@ -241,18 +241,46 @@ at the same time."
   ;; hardening (the save-some-buffers/y-or-n-p/yes-or-no-p override and
   ;; marking the buffer unmodified first) stays as defense-in-depth in case
   ;; it ever does raise its own prompt via some other path.
+  ;; A THIRD gap, found live 2026-09-28 (reported as "so many frames open"
+  ;; after repeated SUPER+SHIFT+E + SUPER+Q): everything above only fires
+  ;; once `org-capture-mode' is genuinely active - i.e. once a template has
+  ;; actually been picked. Close the window while STILL at `my/capture''s
+  ;; own template-picker `completing-read' (the default state right after
+  ;; opening, before typing anything) and neither branch below's guard is
+  ;; true, so nothing aborts that read - it's simply orphaned. Since the
+  ;; popup frame doesn't have its own minibuffer (confirmed live: the
+  ;; picker's `*Minibuf-1*' lives on the base "F1" frame, shared across all
+  ;; client frames), deleting the popup frame does NOT end the minibuffer
+  ;; read on its own the way it would if the frame owned it - the daemon's
+  ;; single command loop just sits blocked on it forever. Every later
+  ;; request (including `emacsclient-safe''s own readiness probe) then
+  ;; times out too; `emacsclient-safe' sees that as "down", tries
+  ;; `systemctl start' (a no-op - the unit is already active, just wedged),
+  ;; and eventually falls through to its own `-a' invocation, which sees an
+  ;; unresponsive-but-technically-alive socket and can self-fork yet
+  ;; ANOTHER daemon on top - compounding into multiple simultaneous popups
+  ;; across multiple actual processes, not just one hung window.
   (add-hook! 'delete-frame-functions
     (defun +org-capture-hypr--finalize-on-manual-close-h (frame)
       (with-selected-frame frame
-        (when (and (+org-capture-frame-p)
-                   (bound-and-true-p org-capture-mode))
-          (let ((buf (window-buffer (frame-selected-window frame))))
-            (when (buffer-live-p buf)
-              (with-current-buffer buf (set-buffer-modified-p nil))))
-          (cl-letf (((symbol-function 'save-some-buffers) #'ignore)
-                    ((symbol-function 'y-or-n-p) (lambda (&rest _) nil))
-                    ((symbol-function 'yes-or-no-p) (lambda (&rest _) nil)))
-            (ignore-errors (org-capture-kill)))))))
+        (when (+org-capture-frame-p)
+          (if (bound-and-true-p org-capture-mode)
+              (progn
+                (let ((buf (window-buffer (frame-selected-window frame))))
+                  (when (buffer-live-p buf)
+                    (with-current-buffer buf (set-buffer-modified-p nil))))
+                (cl-letf (((symbol-function 'save-some-buffers) #'ignore)
+                          ((symbol-function 'y-or-n-p) (lambda (&rest _) nil))
+                          ((symbol-function 'yes-or-no-p) (lambda (&rest _) nil)))
+                  (ignore-errors (org-capture-kill))))
+            ;; Still at the picker - nothing to finalize, just unstick the
+            ;; orphaned read and restore focus ourselves (there's no real
+            ;; capture to fire `org-capture-after-finalize-hook' this time).
+            (when (active-minibuffer-window)
+              (ignore-errors
+                (with-current-buffer (window-buffer (active-minibuffer-window))
+                  (abort-recursive-edit))))
+            (+org-capture-hypr--restore-focus-h))))))
 
   (defun +org-capture-float-init ()
     "Run inside the freshly created popup frame: go straight into the
