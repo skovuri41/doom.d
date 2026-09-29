@@ -211,6 +211,18 @@ at the same time."
 
   (add-hook 'org-capture-after-finalize-hook #'+org-capture-hypr--restore-focus-h)
 
+  ;; Purely cosmetic: once `my/capture' opens a real entry (an indirect
+  ;; buffer of inbox.org/gtd.org, in org-mode), Doom's tabs module groups it
+  ;; with every other org file already open elsewhere, cluttering the
+  ;; popup's tab bar with buffers that have nothing to do with this capture.
+  ;; Scoped to `+org-capture-frame-p' (Doom's own capture-popup-frame check)
+  ;; so normal in-session captures elsewhere are unaffected - only the
+  ;; floating popup gets the tab-free look.
+  (add-hook 'org-capture-mode-hook
+    (defun +org-capture-hypr--hide-tabs-h ()
+      (when (and (+org-capture-frame-p) (bound-and-true-p centaur-tabs-mode))
+        (centaur-tabs-local-mode 1))))
+
   ;; Doom's own `+org-capture-cleanup-frame-h' only fires via
   ;; `org-capture-after-finalize-hook' and `org-capture-refile' - it doesn't
   ;; cover closing the popup window directly (Hyprland's own close bind,
@@ -377,6 +389,14 @@ will show up in `(frame-list)', so the guard has done its job."
       (when (and stray (not (equal stray "main")) (+workspace-exists-p stray))
         (ignore-errors (+workspace-kill stray t))))
     (switch-to-buffer (get-buffer-create "*org-capture-float*"))
+    ;; Purely cosmetic, same reasoning as +emacs-float-init's identical call:
+    ;; hides the tab bar for this blank picker buffer itself. The real
+    ;; capture buffer `my/capture' opens next (an indirect buffer of
+    ;; inbox.org/gtd.org, in org-mode) is handled separately by
+    ;; `+org-capture-hypr--hide-tabs-h' below, since Doom's tabs module
+    ;; groups by major mode and this one starts in fundamental-mode.
+    (when (bound-and-true-p centaur-tabs-mode)
+      (centaur-tabs-local-mode 1))
     (letf! ((#'pop-to-buffer #'switch-to-buffer))
       (condition-case nil
           ;; `+org-capture-float-abort' is a private, precisely-scoped catch

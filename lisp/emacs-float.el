@@ -126,6 +126,13 @@ show up in `(frame-list)', so the guard has done its job."
   (let ((buf (generate-new-buffer "float")))
     (switch-to-buffer buf)
     (org-mode)
+    ;; Purely cosmetic: Doom's `tabs' module (centaur-tabs) groups buffers by
+    ;; major mode, so this org-mode scratch buffer's tab bar would otherwise
+    ;; show every other org file already open elsewhere in the session, not
+    ;; just itself. `centaur-tabs-local-mode' hides the tab bar for just this
+    ;; buffer, independent of anything else open.
+    (when (bound-and-true-p centaur-tabs-mode)
+      (centaur-tabs-local-mode 1))
     (setq-local +emacs-float-origin origin)
     (local-set-key (kbd "C-c C-c") #'+emacs-float-done)
     (local-set-key (kbd "C-c C-k") #'+emacs-float-cancel)
