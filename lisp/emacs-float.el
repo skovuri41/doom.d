@@ -123,11 +123,32 @@ frame parameter afterward left it behind, orphaned and accumulating)."
     (local-set-key (kbd "C-c C-k") #'+emacs-float-cancel)
     (evil-insert-state)))
 
+(defun +emacs-float--existing-frame ()
+  "Return the live float-popup frame, if one is already open."
+  (cl-find-if (lambda (f)
+                (and (equal (frame-parameter f 'name) "emacs-float")
+                     (frame-parameter f 'transient)))
+              (frame-list)))
+
 ;;;###autoload
 (defun +emacs-float ()
   "Open a floating scratch Emacs popup; C-c C-c sends its text back to
-whichever window was focused when this was invoked (C-c C-k cancels)."
+whichever window was focused when this was invoked (C-c C-k cancels).
+
+If one is already open, focuses that instead of spawning a second one -
+found live 2026-09-29: with no such check, repeated SUPER+ALT+E presses
+before closing the previous popup stacked independent frames at the same
+centered position/size, which Hyprland then auto-tabbed together -
+reported as \"previous float windows tabbed\" the next time the binding
+was pressed. Same `+org-capture-float' pattern gtd.el already uses."
   (interactive)
+  (if-let* ((existing (+emacs-float--existing-frame)))
+      (select-frame-set-input-focus existing)
+    (+emacs-float--open)))
+
+(defun +emacs-float--open ()
+  "Actually create the popup frame - see `+emacs-float' for the reuse check
+wrapping this."
   (let ((origin (+emacs-float--active-window-address)))
     ;; `workspace' here is load-bearing, not cosmetic - see gtd.el's
     ;; `+org-capture-hypr--finalize-on-manual-close-h' comment for the full
@@ -150,8 +171,11 @@ whichever window was focused when this was invoked (C-c C-k cancels)."
     ;; permanently-blocking read. Must be set at creation time; unlike
     ;; `workspace' there's no `set-frame-parameter' equivalent after the
     ;; fact for this one.
+    ;;
+    ;; `transient' is what `+emacs-float--existing-frame' (see `+emacs-
+    ;; float' above) actually matches on, same as gtd.el's capture popup.
     (call-process "emacsclient" nil 0 nil
                   "--create-frame" "--frame-parameters"
-                  "((name . \"emacs-float\") (workspace . \"*emacs-float-popup*\") (minibuffer . t))"
+                  "((name . \"emacs-float\") (workspace . \"*emacs-float-popup*\") (minibuffer . t) (transient . t))"
                   "--eval"
                   (format "(+emacs-float-init %S)" origin))))
