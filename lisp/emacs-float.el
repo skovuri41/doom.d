@@ -103,8 +103,18 @@ own frame-setup hook stamps every new frame with the CURRENT workspace
 immediately after creation, running after `--frame-parameters' is applied
 but before this `--eval' runs, so this is the only point late enough to
 actually stick. See gtd.el's `+org-capture-hypr--finalize-on-manual-
-close-h' comment for why this matters - same root cause, same fix."
-  (set-frame-parameter (selected-frame) 'workspace "*emacs-float-popup*")
+close-h' comment for why this matters - same root cause, same fix.
+
+Also cleans up the STALE PERSPECTIVE that frame-setup hook creates - see
+gtd.el's `+org-capture-float-init' comment for the full mechanism (found
+live 2026-09-29, same root cause here: `+workspaces-associate-frame-fn'
+creates a real, freshly-numbered perspective for every new frame since
+this daemon always has other frames already, and simply overwriting the
+frame parameter afterward left it behind, orphaned and accumulating)."
+  (let ((stray (frame-parameter (selected-frame) 'workspace)))
+    (set-frame-parameter (selected-frame) 'workspace "*emacs-float-popup*")
+    (when (and stray (not (equal stray "main")) (+workspace-exists-p stray))
+      (ignore-errors (+workspace-kill stray t))))
   (let ((buf (generate-new-buffer "float")))
     (switch-to-buffer buf)
     (org-mode)
@@ -130,8 +140,18 @@ whichever window was focused when this was invoked (C-c C-k cancels)."
     ;; `save-some-buffers'-prompting across every buffer in the session,
     ;; not just this popup's. A value that can never match a real
     ;; workspace name keeps this frame from ever being mistaken for it.
+    ;;
+    ;; `minibuffer' here matches gtd.el's identically-patterned capture
+    ;; popup, fixing the same underlying gap even though this one hasn't
+    ;; shown the symptom yet: without its own minibuffer a frame implicitly
+    ;; shares the daemon's default one ("F1"), so closing it mid-read
+    ;; doesn't end that read the way closing a normal minibuffer-owning
+    ;; frame does - confirmed live on the capture popup as an orphaned,
+    ;; permanently-blocking read. Must be set at creation time; unlike
+    ;; `workspace' there's no `set-frame-parameter' equivalent after the
+    ;; fact for this one.
     (call-process "emacsclient" nil 0 nil
                   "--create-frame" "--frame-parameters"
-                  "((name . \"emacs-float\") (workspace . \"*emacs-float-popup*\"))"
+                  "((name . \"emacs-float\") (workspace . \"*emacs-float-popup*\") (minibuffer . t))"
                   "--eval"
                   (format "(+emacs-float-init %S)" origin))))
