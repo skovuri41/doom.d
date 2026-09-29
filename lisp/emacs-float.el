@@ -77,8 +77,10 @@ TEXT - see the comment above this section for why that matters."
   "Send this buffer's text to the window +emacs-float was invoked from, then close."
   (interactive)
   (let ((text (buffer-string))
-        (origin +emacs-float-origin))
+        (origin +emacs-float-origin)
+        (buf (current-buffer)))
     (delete-frame)
+    (kill-buffer buf)
     (when origin
       (call-process "hyprctl" nil nil nil "dispatch"
                     (format "hl.dsp.focus({ window = %S })"
@@ -89,7 +91,9 @@ TEXT - see the comment above this section for why that matters."
 (defun +emacs-float-cancel ()
   "Close the popup without sending anything."
   (interactive)
-  (delete-frame))
+  (let ((buf (current-buffer)))
+    (delete-frame)
+    (kill-buffer buf)))
 
 (defun +emacs-float-init (origin)
   "Set up the just-created popup frame: fresh org-mode buffer in Evil
@@ -110,7 +114,11 @@ gtd.el's `+org-capture-float-init' comment for the full mechanism (found
 live 2026-09-29, same root cause here: `+workspaces-associate-frame-fn'
 creates a real, freshly-numbered perspective for every new frame since
 this daemon always has other frames already, and simply overwriting the
-frame parameter afterward left it behind, orphaned and accumulating)."
+frame parameter afterward left it behind, orphaned and accumulating).
+
+Also clears `+emacs-float--pending' - this frame is now real and will
+show up in `(frame-list)', so the guard has done its job."
+  (setq +emacs-float--pending nil)
   (let ((stray (frame-parameter (selected-frame) 'workspace)))
     (set-frame-parameter (selected-frame) 'workspace "*emacs-float-popup*")
     (when (and stray (not (equal stray "main")) (+workspace-exists-p stray))
@@ -130,21 +138,53 @@ frame parameter afterward left it behind, orphaned and accumulating)."
                      (frame-parameter f 'transient)))
               (frame-list)))
 
+(defvar +emacs-float--pending nil
+  "Timestamp (`float-time') set the instant a new popup frame is requested,
+cleared once `+emacs-float-init' actually runs inside it - nil otherwise.
+
+The 2026-09-29 existing-frame check above isn't sufficient by itself:
+`+emacs-float--open' spawns the real frame via an ASYNCHRONOUS, fire-
+and-forget nested `emacsclient --create-frame' subprocess (so the outer
+`--eval' returns immediately), and that subprocess takes a non-zero,
+variable amount of time to actually register the frame with the
+compositor. Confirmed live (2026-09-29): firing two `+emacs-float' calls
+back-to-back with NO gap - a fast real double-press, not the sequential-
+with-a-pause presses the existing-frame check alone was validated
+against - reproduces two separate, identically-positioned frames that
+Hyprland tabs together, because the second call's `(frame-list)' check
+still runs before the first call's frame has appeared in it. Setting
+this flag synchronously, before the async subprocess is even started,
+closes that window; the 5-second staleness cutoff in
+`+emacs-float--pending-p' is just a safety net in case `+emacs-float-init'
+never runs (e.g. the nested emacsclient call fails) so a permanently
+stuck flag can't wedge the popup shut for the rest of the session.")
+
+(defun +emacs-float--pending-p ()
+  "Non-nil if a popup frame was very recently requested and may not have
+finished registering with the compositor yet."
+  (and +emacs-float--pending
+       (< (- (float-time) +emacs-float--pending) 5)))
+
 ;;;###autoload
 (defun +emacs-float ()
   "Open a floating scratch Emacs popup; C-c C-c sends its text back to
 whichever window was focused when this was invoked (C-c C-k cancels).
 
-If one is already open, focuses that instead of spawning a second one -
-found live 2026-09-29: with no such check, repeated SUPER+ALT+E presses
-before closing the previous popup stacked independent frames at the same
-centered position/size, which Hyprland then auto-tabbed together -
-reported as \"previous float windows tabbed\" the next time the binding
-was pressed. Same `+org-capture-float' pattern gtd.el already uses."
+If one is already open, focuses that instead of spawning a second one.
+If one was *just* requested but hasn't finished opening yet, does nothing
+rather than racing a second frame into existence - see
+`+emacs-float--pending' for why the existing-frame check alone isn't
+enough for a fast repeat press. Same `+org-capture-float' pattern gtd.el
+already uses for both of these."
   (interactive)
-  (if-let* ((existing (+emacs-float--existing-frame)))
-      (select-frame-set-input-focus existing)
-    (+emacs-float--open)))
+  (cond
+   ((+emacs-float--existing-frame)
+    (select-frame-set-input-focus (+emacs-float--existing-frame)))
+   ((+emacs-float--pending-p)
+    (message "emacs-float: still opening..."))
+   (t
+    (setq +emacs-float--pending (float-time))
+    (+emacs-float--open))))
 
 (defun +emacs-float--open ()
   "Actually create the popup frame - see `+emacs-float' for the reuse check

@@ -367,7 +367,11 @@ afterward (as before) detaches the frame from that perspective but leaves
 the perspective itself behind, orphaned - a new one accumulates every
 single time this popup opens. `+workspace-kill' (not `+workspace/kill',
 which also switches frames to a fallback - an unwanted side effect here)
-removes it outright with no side effects, once nothing points at it."
+removes it outright with no side effects, once nothing points at it.
+
+Also clears `+org-capture-hypr--pending' - this frame is now real and
+will show up in `(frame-list)', so the guard has done its job."
+    (setq +org-capture-hypr--pending nil)
     (let ((stray (frame-parameter (selected-frame) 'workspace)))
       (set-frame-parameter (selected-frame) 'workspace "*capture-popup*")
       (when (and stray (not (equal stray "main")) (+workspace-exists-p stray))
@@ -401,6 +405,30 @@ removes it outright with no side effects, once nothing points at it."
                        (frame-parameter f 'transient)))
                 (frame-list)))
 
+  (defvar +org-capture-hypr--pending nil
+    "Timestamp (`float-time') set the instant a new capture popup is
+requested, cleared once `+org-capture-float-init' actually runs inside it.
+
+Mirrors `+emacs-float--pending' (lisp/emacs-float.el) - same race, same
+fix, confirmed live there 2026-09-29 before porting it here: the frame is
+spawned by an ASYNCHRONOUS, fire-and-forget nested `emacsclient
+--create-frame' subprocess, which takes a non-zero moment to actually
+register with the compositor. `+org-capture-float--existing-frame''s
+`(frame-list)' check alone can't see it during that window, so a second
+SUPER+X press landing inside it would create a duplicate popup rather
+than focusing the first - the existing-frame check was only ever
+validated against sequential presses with a pause between them, not a
+fast real double-press. The 5-second cutoff in
+`+org-capture-hypr--pending-p' is a safety net in case
+`+org-capture-float-init' never runs, so a stuck flag can't wedge the
+popup shut for the rest of the session.")
+
+  (defun +org-capture-hypr--pending-p ()
+    "Non-nil if a capture popup was very recently requested and may not
+have finished registering with the compositor yet."
+    (and +org-capture-hypr--pending
+         (< (- (float-time) +org-capture-hypr--pending) 5)))
+
   ;;;###autoload
   (defun +org-capture-float ()
     "Open a floating Emacs frame straight into the unified capture menu,
@@ -410,13 +438,18 @@ see the comment above). Restores focus to whichever Hyprland window was
 active when invoked, once capture finishes or is aborted.
 
 If a capture popup is already open, focuses that instead of spawning a
-second one - pressing SUPER+X back-to-back otherwise stacks independent
-popups while overwriting the single `+org-capture-hypr-origin' each one
-reads on finish, so whichever finishes first restores focus to the
-wrong window instead of where you actually started."
+second one. If one was *just* requested but hasn't finished opening yet,
+does nothing rather than racing a second frame into existence - see
+`+org-capture-hypr--pending' for why the existing-frame check alone isn't
+enough for a fast repeat press."
     (interactive)
-    (if-let* ((existing (+org-capture-float--existing-frame)))
-        (select-frame-set-input-focus existing)
+    (cond
+     ((+org-capture-float--existing-frame)
+      (select-frame-set-input-focus (+org-capture-float--existing-frame)))
+     ((+org-capture-hypr--pending-p)
+      (message "org-capture-float: still opening..."))
+     (t
+      (setq +org-capture-hypr--pending (float-time))
       (setq +org-capture-hypr-origin (+org-capture-hypr--active-window-address))
       ;; `workspace' here is NOT cosmetic - see `+org-capture-hypr--finalize-
       ;; on-manual-close-h' below for why a frame with no explicit workspace
@@ -443,4 +476,4 @@ wrong window instead of where you actually started."
                                        (cons 'workspace "*capture-popup*")
                                        (cons 'minibuffer t)))
                     "--eval"
-                    "(+org-capture-float-init)"))))
+                    "(+org-capture-float-init)")))))
