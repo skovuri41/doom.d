@@ -73,27 +73,70 @@ A harmless Shift press/release runs first, in the SAME `wtype' process as
 TEXT - see the comment above this section for why that matters."
   (call-process "wtype" nil nil nil "-M" "shift" "-m" "shift" text))
 
+(defvar-local +emacs-float--finishing nil
+  "Set non-nil right before `+emacs-float-done'/`+emacs-float-cancel' call
+`delete-frame' themselves, so the `delete-frame-functions' safety net
+below can tell this expected self-close apart from an external one
+(SUPER+Q, clicking the window's close button) and skip redundant/
+conflicting cleanup on the former. See that hook's docstring for why an
+external close needs handling here at all.")
+
+(defun +emacs-float--restore-focus (origin)
+  "Dispatch focus back to hyprland window address ORIGIN, if non-nil."
+  (when origin
+    (call-process "hyprctl" nil nil nil "dispatch"
+                  (format "hl.dsp.focus({ window = %S })"
+                          (concat "address:" origin)))
+    (sleep-for 0.15)))
+
 (defun +emacs-float-done ()
   "Send this buffer's text to the window +emacs-float was invoked from, then close."
   (interactive)
   (let ((text (buffer-string))
         (origin +emacs-float-origin)
         (buf (current-buffer)))
+    (setq +emacs-float--finishing t)
     (delete-frame)
     (kill-buffer buf)
-    (when origin
-      (call-process "hyprctl" nil nil nil "dispatch"
-                    (format "hl.dsp.focus({ window = %S })"
-                            (concat "address:" origin)))
-      (sleep-for 0.15))
+    (+emacs-float--restore-focus origin)
     (+emacs-float-wtype-send text)))
 
 (defun +emacs-float-cancel ()
   "Close the popup without sending anything."
   (interactive)
   (let ((buf (current-buffer)))
+    (setq +emacs-float--finishing t)
     (delete-frame)
     (kill-buffer buf)))
+
+(add-hook! 'delete-frame-functions
+  (defun +emacs-float--cleanup-on-manual-close-h (frame)
+    "`+emacs-float-done'/`+emacs-float-cancel' are ordinary commands bound
+only to C-c C-c/C-c C-k - an external close (SUPER+Q, clicking the
+window's close button) never runs them at all, since the window manager
+calls `delete-frame' directly instead. Without this hook that means an
+external close silently skips the buffer-kill fix above (leaking a
+`float' buffer again, just through a different door) and skips the
+explicit focus-restore dispatch too, falling back to Hyprland's own
+native refocus-on-close - already documented at the top of this file as
+separately proved unreliable for that exact purpose.
+
+Treat an external close like C-c C-k (cancel), not C-c C-c (send): don't
+type a possibly-unfinished scratch note into the origin window just
+because the popup was dismissed via the window manager rather than from
+inside it.
+
+Checks `+emacs-float--finishing' to skip this entirely when the frame is
+closing via `+emacs-float-done'/-cancel's own `delete-frame' call, which
+also runs this hook - both of those commands already handle their own
+cleanup, so redundant/conflicting handling here would double-dispatch a
+focus-restore and try to kill an already-dead buffer."
+    (when (equal (frame-parameter frame 'name) "emacs-float")
+      (let* ((win (frame-selected-window frame))
+             (buf (and (window-live-p win) (window-buffer win))))
+        (when (and buf (not (buffer-local-value '+emacs-float--finishing buf)))
+          (+emacs-float--restore-focus (buffer-local-value '+emacs-float-origin buf))
+          (when (buffer-live-p buf) (kill-buffer buf)))))))
 
 (defun +emacs-float-init (origin)
   "Set up the just-created popup frame: fresh org-mode buffer in Evil
