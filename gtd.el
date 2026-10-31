@@ -136,43 +136,22 @@
 
   (map! :leader :desc "Capture (org + roam)" "X" #'my/capture))
 
-;; Floating capture popup, for Hyprland's SUPER+X (see ~/.config/hypr/).
+;; Floating capture popup, for Hyprland's SUPER+SHIFT+E (see ~/.config/hypr/).
 ;;
-;; Doom's org module ships a built-in "external capture frame" feature for
-;; exactly this (`+org-capture/open-frame', modules/lang/org/autoload/
-;; org-capture.el) - a first attempt at this built directly on top of it,
-;; via its `+org-capture-fn' override hook. That HUNG THE ENTIRE DAEMON on
-;; this pgtk/Wayland build, every time: `+org-capture/open-frame' creates
-;; its frame by calling `(make-frame +org-capture-frame-parameters)'
-;; directly - from inside an already-connected `--eval'-only client, with
-;; hardcoded `window-system'/`display' parameters - and that hung
-;; indefinitely creating the actual Wayland surface. Because the hang was
-;; at the GTK/toolkit level, not the Lisp level, it froze the whole Emacs
-;; process, not just that one frame - confirmed by `hyprctl clients -j'
-;; never showing a mapped window at all, while `emacsclient' piled up one
-;; stuck process per SUPER+X press, none able to get through.
+;; Doom's built-in `+org-capture/open-frame' HANGS THE WHOLE DAEMON on this
+;; pgtk/Wayland build - it calls `(make-frame ...)' directly from inside an
+;; --eval-only client, which hangs at the GTK/Wayland level creating the
+;; surface (confirmed via `hyprctl clients -j' never showing a mapped
+;; window, while emacsclient processes piled up unable to get through).
 ;;
-;; `+emacs-float' (lisp/emacs-float.el) never has this problem, because it
-;; creates its popup a different way: a *separate*, nested `emacsclient
-;; --create-frame' subprocess, going through emacsclient's own well-tested
-;; frame-creation RPC - the exact same path as the plain SUPER+E binding.
-;; This reuses that proven path instead, while still keeping Doom's own
-;; (pure Lisp, not the problem) cleanup machinery working: the nested
-;; frame is given the same `name'/`transient' parameters
-;; `+org-capture-frame-parameters' uses, which is all `+org-capture-frame-p'
-;; (and therefore `+org-capture-cleanup-frame-h') checks to recognize a
-;; capture frame - so Doom's existing finish/abort/refile cleanup still
-;; applies, even though `+org-capture/open-frame' itself is never called.
+;; Fix: go through a *separate* nested `emacsclient --create-frame'
+;; subprocess instead (the same proven path `+emacs-float' uses, and that
+;; plain SUPER+E uses) - this still gets Doom's own finish/abort/refile
+;; cleanup for free, since that only keys off the frame's `name'/`transient'
+;; parameters (`+org-capture-frame-p'), not how the frame was created.
 ;;
-;; What's new here, carried over from the `+emacs-float' investigation, is
-;; Hyprland-specific: capturing the window focused before the popup opened
-;; and restoring focus to it once done, via the same `hl.dsp.focus'
-;; dispatch mechanism. The `+emacs-float' race condition itself (wtype
-;; dropping the first several ms of input unless warmed up in the same
-;; process invocation) doesn't apply here - there's no wtype call in this
-;; path, since the destination is an org file, not the origin window - but
-;; the discipline that fix came from still applies: do the whole "capture
-;; origin, act, restore origin" sequence as one coherent unit.
+;; New here vs. `+emacs-float': captures the window focused before the
+;; popup opened and restores focus to it after, via `hl.dsp.focus'.
 (after! org
   (defvar +org-capture-hypr-origin nil
     "Hyprland window address to restore focus to once the capture popup closes.")
@@ -223,82 +202,36 @@ at the same time."
       (when (and (+org-capture-frame-p) (bound-and-true-p centaur-tabs-mode))
         (centaur-tabs-local-mode 1))))
 
-  ;; Doom's own `+org-capture-cleanup-frame-h' only fires via
-  ;; `org-capture-after-finalize-hook' and `org-capture-refile' - it doesn't
-  ;; cover closing the popup window directly (Hyprland's own close bind,
-  ;; clicking the X) while a capture is mid-flight, which would otherwise
-  ;; abandon org-capture's indirect buffer and staging state instead of
-  ;; cleanly finalizing it. This finalizes it first in that case.
+  ;; Doom's `+org-capture-cleanup-frame-h' only fires via `org-capture-
+  ;; after-finalize-hook'/`org-capture-refile' - it doesn't cover the popup
+  ;; being closed directly (Hyprland close bind, clicking X) mid-capture,
+  ;; which would otherwise abandon org-capture's indirect buffer and state.
   ;;
-  ;; `ignore-errors' alone is NOT enough here - confirmed live 2026-09-28,
-  ;; traced with an instrumented backtrace (not guessed): closing the popup
-  ;; externally hit a real, blocking "Save file .../inbox.org? (y, n, !,
-  ;; ...)" prompt with nobody there to answer it, hanging the daemon
-  ;; indefinitely - which then silently broke `kill-emacs'/`erestart' the
-  ;; next time either ran, since it's the same command loop.
+  ;; Root cause of the original hang here was NOT `org-capture-kill' - it
+  ;; was `+workspaces-delete-associated-workspace-h' (an earlier `delete-
+  ;; frame-functions' hook, from `:ui workspaces') mistaking this frame for
+  ;; the main workspace's frame and killing the whole workspace, prompting
+  ;; `save-some-buffers' on every buffer in the session. Fixed by tagging
+  ;; this frame with a `workspace' value that can never match a real one
+  ;; (see `+org-capture-float' below). The save-some-buffers/y-or-n-p
+  ;; override here stays as defense-in-depth.
   ;;
-  ;; The ACTUAL source surprised us: not `org-capture-kill' at all. It was
-  ;; `+workspaces-delete-associated-workspace-h', an EARLIER function on
-  ;; this same `delete-frame-functions' hook (Doom's own, from `:ui
-  ;; workspaces'/persp-mode) - it saw this frame tagged with the *main*
-  ;; workspace (every new frame inherits the current one by default, and
-  ;; the nested `emacsclient --create-frame' call below never overrode it),
-  ;; concluded the main workspace's frame had just closed, and called
-  ;; `+workspace/kill' on it - which runs `save-some-buffers' across EVERY
-  ;; buffer in the *whole session*, not just this popup's. The real fix is
-  ;; where the frame is created, below: giving it an explicit `workspace'
-  ;; frame parameter that can never match a real workspace name, so that
-  ;; hook's guard condition is never true for this frame in the first
-  ;; place. `org-capture-kill' was never actually the culprit - but this
-  ;; hardening (the save-some-buffers/y-or-n-p/yes-or-no-p override and
-  ;; marking the buffer unmodified first) stays as defense-in-depth in case
-  ;; it ever does raise its own prompt via some other path.
-  ;; A THIRD gap, found live 2026-09-28 (reported as "so many frames open"
-  ;; after repeated SUPER+SHIFT+E + SUPER+Q): everything above only fires
-  ;; once `org-capture-mode' is genuinely active - i.e. once a template has
-  ;; actually been picked. Close the window while STILL at `my/capture''s
-  ;; own template-picker `completing-read' (the default state right after
-  ;; opening, before typing anything) and neither branch here caught it -
-  ;; nothing aborted that read, so it was simply orphaned. Root cause: the
-  ;; popup frame didn't have its own minibuffer (confirmed live: the
-  ;; picker's `*Minibuf-1*' lived on the base "F1" frame, shared across all
-  ;; client frames), so deleting the popup frame didn't end the minibuffer
-  ;; read the way it would have if the frame owned it - the daemon's single
-  ;; command loop just sat blocked on it forever, and each repeat compounded
-  ;; (see `emacsclient-safe' for the fork-pileup this caused downstream).
+  ;; A second gap: closing the popup while still at `my/capture''s template
+  ;; picker (before `org-capture-mode' exists) orphans that `completing-
+  ;; read' instead - the popup frame didn't own its own minibuffer, so
+  ;; deleting it didn't end the read. Fixed by giving the frame `(minibuffer
+  ;; . t)' at creation, plus a dedicated `catch'/`throw' tag
+  ;; (`+org-capture-float-abort') to unstick the read, deferred via
+  ;; `run-at-time 0' since this hook runs nested inside `delete-frame'
+  ;; itself - throwing from it directly interrupts `delete-frame''s own
+  ;; teardown and leaves the frame/window alive but abandoned.
   ;;
-  ;; FIRST FIX ATTEMPT (reverted, made things worse - 2026-09-28): calling
-  ;; `abort-recursive-edit' from here to force the orphaned read closed.
-  ;; Confirmed live this throws too indiscriminately - `abort-recursive-
-  ;; edit' unwinds to the CLOSEST enclosing recursive-edit-like context
-  ;; globally, not a specific targeted one, and that turned out to be
-  ;; server.el's own request-dispatch machinery, not the picker. Result:
-  ;; "Process server <N> not running: deleted" messages and frame count
-  ;; climbing instead of resetting - server.el tearing down and recreating
-  ;; its internal socket-listener process each time. Never reach for
-  ;; `abort-recursive-edit'/`top-level' from a `delete-frame-functions'
-  ;; hook in a daemon - there is no reliable way to know what else is on
-  ;; the recursive-edit stack at that point.
-  ;;
-  ;; SECOND FIX ATTEMPT (also insufficient on its own, 2026-09-28): giving
-  ;; the popup frame its own minibuffer (`(minibuffer . t)' in
-  ;; `+org-capture-float''s `--frame-parameters', kept below - harmless and
-  ;; arguably still correct hygiene) on the theory that Emacs's C-level
-  ;; `delete-frame' would then know how to unwind a pending read on it.
-  ;; Confirmed live this alone did NOT help - the daemon still hung. A
-  ;; frame owning its minibuffer does not, by itself, make `delete-frame'
-  ;; abort a `completing-read' that's logically still blocked on the Lisp
-  ;; call stack - the frame/window objects disappearing doesn't retroactively
-  ;; unwind Lisp code that's actively waiting on them.
-  ;;
-  ;; ACTUAL FIX: a named `catch'/`throw' pair, precisely scoped - see the
-  ;; `+org-capture-float-abort' catch wrapping `my/capture' in
-  ;; `+org-capture-float-init'. Unlike `abort-recursive-edit' (attempt one,
-  ;; above), `throw' can only ever unwind to a `catch' with the exact same
-  ;; tag, wherever it's nested on the stack - it cannot land anywhere else
-  ;; the way `abort-recursive-edit''s hardcoded 'exit tag did, so this is
-  ;; safe regardless of what else (server.el's own dispatch, some other
-  ;; recursive edit) happens to be on the stack at the time.
+  ;; Do NOT use `abort-recursive-edit'/`top-level' for this - tried first,
+  ;; and it unwinds to whatever recursive-edit context is globally nearest,
+  ;; which turned out to be server.el's own dispatch loop, corrupting it
+  ;; ("Process server <N> not running: deleted", frame count climbing). A
+  ;; named `catch'/`throw' pair can only ever unwind to its own exact tag,
+  ;; so it's safe no matter what else is on the stack.
   (add-hook! 'delete-frame-functions
     (defun +org-capture-hypr--finalize-on-manual-close-h (frame)
       (with-selected-frame frame
@@ -312,21 +245,10 @@ at the same time."
                           ((symbol-function 'y-or-n-p) (lambda (&rest _) nil))
                           ((symbol-function 'yes-or-no-p) (lambda (&rest _) nil)))
                   (ignore-errors (org-capture-kill))))
-            ;; Still at the picker - nothing for org-capture-kill to do;
-            ;; unstick `my/capture''s own read via the dedicated tag instead.
-            ;;
-            ;; MUST be deferred, not thrown directly from here - confirmed
-            ;; live 2026-09-28: this hook runs NESTED inside `delete-frame'
-            ;; itself (called via `run-hook-with-args' as part of its own
-            ;; execution), so throwing straight out of it also throws out of
-            ;; `delete-frame' before it finishes its own teardown - the
-            ;; Wayland window and Lisp frame object are left alive, abandoned
-            ;; and empty, never actually closed, even though the daemon
-            ;; stops hanging. `run-at-time 0' queues the throw for the very
-            ;; next event-loop turn instead, letting `delete-frame' finish
-            ;; uninterrupted first; the orphaned read is still blocked at
-            ;; that point (nothing else can unblock it), so the deferred
-            ;; throw still reaches it correctly a moment later.
+            ;; Still at the picker - unstick `my/capture''s read via the
+            ;; dedicated tag, deferred to the next event-loop turn so
+            ;; `delete-frame' finishes its own teardown first (see comment
+            ;; above the hook).
             (run-at-time 0 nil
                          (lambda ()
                            (ignore-errors
@@ -335,54 +257,27 @@ at the same time."
 
   (defun +org-capture-float-init ()
     "Run inside the freshly created popup frame: go straight into the
-unified capture menu. org-capture's own buffer display normally splits the
-window to show its target alongside whatever was already there, which is
-why this otherwise showed a split. Doom's own `+org-capture/open-frame'
-fixes that by switching to `(doom-fallback-buffer)' first and temporarily
-making `pop-to-buffer' behave like `switch-to-buffer' (single window, no
-split) - the second half is reused below, but NOT the first: the
-`:ui dashboard' module (enabled here) redefines `doom-fallback-buffer' to
-literally return the dashboard buffer (`doom-fallback-buffer-name' gets
-set to the dashboard's name), so that call showed the dashboard where a
-blank buffer was intended. A plain fresh buffer sidesteps that dashboard
-override entirely, whether or not it's enabled.
+unified capture menu.
 
-C-g here (Emacs's normal abort key) already works to cancel the template
-picker or org-roam's title prompt - `my/capture' hasn't started any real
-capture session yet at that point, so there's nothing for
-`org-capture-after-finalize-hook' to fire on, and the popup would
-otherwise sit open and empty. Catch that quit signal and clean up
-manually instead. (Aborting an actual capture buffer, once one is open,
-is unaffected - that's the existing C-c C-k, which already goes through
-the finalize hook correctly.)
+Uses a fresh buffer instead of Doom's own `(doom-fallback-buffer)' (what
+`+org-capture/open-frame' uses to avoid a window split) because `:ui
+dashboard' redefines that to literally return the dashboard buffer.
 
-Also (re-)tags this frame with a dummy `workspace' parameter, overwriting
-whatever persp-mode already set - confirmed live 2026-09-28 that the
-`workspace' cons passed via `+org-capture-float''s own `--frame-parameters'
-does NOT survive: persp-mode's own frame-setup hook stamps every new frame
-with the CURRENT workspace immediately after creation, running after
-`--frame-parameters' is applied but before this `--eval' runs, so this is
-the only point late enough to actually stick. See
-`+org-capture-hypr--finalize-on-manual-close-h' for why this matters,
-including for the `catch'/`throw' wrapping `my/capture' below.
+C-g here cancels the template/title picker before any real capture session
+starts, so `org-capture-after-finalize-hook' never fires to clean up -
+caught explicitly instead. Aborting an actual capture buffer once one is
+open is unaffected (that's the existing C-c C-k).
 
-Also cleans up the STALE PERSPECTIVE that frame-setup hook creates in the
-process - found live 2026-09-29, reported as \"so many perspective frames\"
-cluttering `+workspace/display'/the modeline. `+workspaces-associate-
-frame-fn' (Doom's own `after-make-frame-functions' hook, modules/ui/
-workspaces/autoload/workspaces.el) doesn't just set the frame parameter -
-since this daemon always has other frames already (F1), it unconditionally
-calls `+workspace-switch' with a freshly `+workspace--generate-id'-numbered
-name (\"#1\", \"#2\", ...), creating a REAL new perspective and only THEN
-stamping the frame with it. Simply overwriting the frame parameter
-afterward (as before) detaches the frame from that perspective but leaves
-the perspective itself behind, orphaned - a new one accumulates every
-single time this popup opens. `+workspace-kill' (not `+workspace/kill',
-which also switches frames to a fallback - an unwanted side effect here)
-removes it outright with no side effects, once nothing points at it.
+Re-tags this frame's `workspace' parameter here, not at creation, because
+persp-mode's own frame-setup hook overwrites whatever `--frame-parameters'
+set, running after frame creation but before this `--eval'. Also kills the
+stray perspective that same hook creates in the process (via
+`+workspace-kill', not `+workspace/kill' which would also switch frames) -
+see `+org-capture-float' below for why the frame needs its own `workspace'
+tag at all.
 
-Also clears `+org-capture-hypr--pending' - this frame is now real and
-will show up in `(frame-list)', so the guard has done its job."
+Clears `+org-capture-hypr--pending' - the frame is now real and visible in
+`(frame-list)'."
     (setq +org-capture-hypr--pending nil)
     (let ((stray (frame-parameter (selected-frame) 'workspace)))
       (set-frame-parameter (selected-frame) 'workspace "*capture-popup*")
@@ -399,19 +294,9 @@ will show up in `(frame-list)', so the guard has done its job."
       (centaur-tabs-local-mode 1))
     (letf! ((#'pop-to-buffer #'switch-to-buffer))
       (condition-case nil
-          ;; `+org-capture-float-abort' is a private, precisely-scoped catch
-          ;; tag - `+org-capture-hypr--finalize-on-manual-close-h' throws to
-          ;; it specifically when the popup is closed while still at this
-          ;; picker (before `org-capture-mode' exists). Do NOT replace this
-          ;; with a generic `abort-recursive-edit'/`top-level' call anywhere
-          ;; - confirmed live 2026-09-28 that unwinds to whatever recursive-
-          ;; edit-like context is nearest globally, not necessarily this
-          ;; one, and can land in server.el's OWN request-dispatch machinery
-          ;; instead - corrupting it ("Process server <N> not running:
-          ;; deleted" messages, frame count climbing instead of resetting).
-          ;; A named `catch'/`throw' pair can only ever unwind to this exact
-          ;; tag, wherever it's nested, so it's safe regardless of what else
-          ;; is on the stack.
+          ;; `+org-capture-float-abort': the dedicated catch tag
+          ;; `+org-capture-hypr--finalize-on-manual-close-h' throws to when
+          ;; the popup closes at the bare picker (see comment on that hook).
           (catch '+org-capture-float-abort (my/capture))
         (quit
          (+org-capture-hypr--restore-focus-h)
@@ -426,22 +311,18 @@ will show up in `(frame-list)', so the guard has done its job."
                 (frame-list)))
 
   (defvar +org-capture-hypr--pending nil
-    "Timestamp (`float-time') set the instant a new capture popup is
-requested, cleared once `+org-capture-float-init' actually runs inside it.
+    "Timestamp (`float-time') set when a new capture popup is requested,
+cleared once `+org-capture-float-init' runs inside it.
+
+The frame is created by an async, fire-and-forget nested `emacsclient
+--create-frame', which takes a moment to register with the compositor -
+`+org-capture-float--existing-frame''s `(frame-list)' check can't see it
+during that window, so a fast double-press would spawn a duplicate instead
+of focusing the first. The 5s cutoff in `+org-capture-hypr--pending-p' is
+just a safety net in case `+org-capture-float-init' never runs.
 
 Mirrors `+emacs-float--pending' (lisp/emacs-float.el) - same race, same
-fix, confirmed live there 2026-09-29 before porting it here: the frame is
-spawned by an ASYNCHRONOUS, fire-and-forget nested `emacsclient
---create-frame' subprocess, which takes a non-zero moment to actually
-register with the compositor. `+org-capture-float--existing-frame''s
-`(frame-list)' check alone can't see it during that window, so a second
-SUPER+X press landing inside it would create a duplicate popup rather
-than focusing the first - the existing-frame check was only ever
-validated against sequential presses with a pause between them, not a
-fast real double-press. The 5-second cutoff in
-`+org-capture-hypr--pending-p' is a safety net in case
-`+org-capture-float-init' never runs, so a stuck flag can't wedge the
-popup shut for the rest of the session.")
+fix.")
 
   (defun +org-capture-hypr--pending-p ()
     "Non-nil if a capture popup was very recently requested and may not
@@ -471,24 +352,12 @@ enough for a fast repeat press."
      (t
       (setq +org-capture-hypr--pending (float-time))
       (setq +org-capture-hypr-origin (+org-capture-hypr--active-window-address))
-      ;; `workspace' here is NOT cosmetic - see `+org-capture-hypr--finalize-
-      ;; on-manual-close-h' below for why a frame with no explicit workspace
-      ;; of its own is dangerous: it silently inherits the CURRENT one
-      ;; (persp-mode tags every new frame with it by default), and closing
-      ;; it externally then reads as "the main workspace's frame just
-      ;; closed" to Doom's own `+workspaces-delete-associated-workspace-h'
-      ;; (also on `delete-frame-functions') - which kills the ENTIRE main
-      ;; workspace in response, `save-some-buffers'-prompting on every
-      ;; buffer in it. A value that can never match a real workspace name
-      ;; keeps this frame's closing from ever being mistaken for that.
-      ;;
-      ;; `minibuffer' here is what actually fixes the orphaned-picker-read
-      ;; bug above, unlike `workspace' it MUST be set at creation time
-      ;; (there is no `set-frame-parameter' equivalent after the fact -
-      ;; whether a frame owns a minibuffer is decided when it's built).
-      ;; Without it the frame implicitly shared the daemon's default
-      ;; minibuffer frame ("F1"), so closing the popup mid-read didn't end
-      ;; the read the way closing a normal minibuffer-owning frame does.
+      ;; `workspace': tags the frame so it's never mistaken for the main
+      ;; workspace's frame on close (see the `delete-frame-functions' hook
+      ;; above). `minibuffer': must be set here, at creation - there's no
+      ;; `set-frame-parameter' equivalent after the fact - so the frame owns
+      ;; its own read instead of sharing the daemon's default minibuffer
+      ;; frame (which is what orphaned the picker's `completing-read').
       (call-process "emacsclient" nil 0 nil
                     "--create-frame" "--frame-parameters"
                     (format "%S" (list (cons 'name (alist-get 'name +org-capture-frame-parameters))
